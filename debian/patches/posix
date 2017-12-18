@@ -1,0 +1,305 @@
+Manual hack for now, next lwip version will contain needed tweaks.
+
+Index: lwip/src/include/lwip/inet.h
+===================================================================
+--- lwip.orig/src/include/lwip/inet.h
++++ lwip/src/include/lwip/inet.h
+@@ -49,6 +49,7 @@
+ extern "C" {
+ #endif
+ 
++#if 0
+ /* If your port already typedef's in_addr_t, define IN_ADDR_T_DEFINED
+    to prevent this code from redefining it. */
+ #if !defined(in_addr_t) && !defined(IN_ADDR_T_DEFINED)
+@@ -129,6 +130,7 @@ extern const struct in6_addr in6addr_any
+ #define INET6_ADDRSTRLEN    IP6ADDR_STRLEN_MAX
+ #endif
+ #endif
++#endif
+ 
+ #if LWIP_IPV4
+ 
+@@ -146,14 +148,14 @@ extern const struct in6_addr in6addr_any
+ #endif /* LWIP_IPV4 */
+ 
+ #if LWIP_IPV6
+-#define inet6_addr_from_ip6addr(target_in6addr, source_ip6addr) {(target_in6addr)->un.u32_addr[0] = (source_ip6addr)->addr[0]; \
+-                                                                 (target_in6addr)->un.u32_addr[1] = (source_ip6addr)->addr[1]; \
+-                                                                 (target_in6addr)->un.u32_addr[2] = (source_ip6addr)->addr[2]; \
+-                                                                 (target_in6addr)->un.u32_addr[3] = (source_ip6addr)->addr[3];}
+-#define inet6_addr_to_ip6addr(target_ip6addr, source_in6addr)   {(target_ip6addr)->addr[0] = (source_in6addr)->un.u32_addr[0]; \
+-                                                                 (target_ip6addr)->addr[1] = (source_in6addr)->un.u32_addr[1]; \
+-                                                                 (target_ip6addr)->addr[2] = (source_in6addr)->un.u32_addr[2]; \
+-                                                                 (target_ip6addr)->addr[3] = (source_in6addr)->un.u32_addr[3];}
++#define inet6_addr_from_ip6addr(target_in6addr, source_ip6addr) {(target_in6addr)->s6_addr32[0] = (source_ip6addr)->addr[0]; \
++                                                                 (target_in6addr)->s6_addr32[1] = (source_ip6addr)->addr[1]; \
++                                                                 (target_in6addr)->s6_addr32[2] = (source_ip6addr)->addr[2]; \
++                                                                 (target_in6addr)->s6_addr32[3] = (source_ip6addr)->addr[3];}
++#define inet6_addr_to_ip6addr(target_ip6addr, source_in6addr)   {(target_ip6addr)->addr[0] = (source_in6addr)->s6_addr32[0]; \
++                                                                 (target_ip6addr)->addr[1] = (source_in6addr)->s6_addr32[1]; \
++                                                                 (target_ip6addr)->addr[2] = (source_in6addr)->s6_addr32[2]; \
++                                                                 (target_ip6addr)->addr[3] = (source_in6addr)->s6_addr32[3];}
+ /* ATTENTION: the next define only works because both in6_addr and ip6_addr_t are an u32_t[4] effectively! */
+ #define inet6_addr_to_ip6addr_p(target_ip6addr_p, source_in6addr)   ((target_ip6addr_p) = (ip6_addr_t*)(source_in6addr))
+ 
+Index: lwip/src/include/lwip/sockets.h
+===================================================================
+--- lwip.orig/src/include/lwip/sockets.h
++++ lwip/src/include/lwip/sockets.h
+@@ -52,6 +52,7 @@
+ extern "C" {
+ #endif
+ 
++#if 0
+ /* If your port already typedef's sa_family_t, define SA_FAMILY_T_DEFINED
+    to prevent this code from redefining it. */
+ #if !defined(sa_family_t) && !defined(SA_FAMILY_T_DEFINED)
+@@ -107,6 +108,12 @@ struct sockaddr_storage {
+ #if !defined(socklen_t) && !defined(SOCKLEN_T_DEFINED)
+ typedef u32_t socklen_t;
+ #endif
++#else
++#define SIN_ZERO_LEN sizeof (struct sockaddr) - \
++                           __SOCKADDR_COMMON_SIZE - \
++                           sizeof (in_port_t) - \
++                           sizeof (struct in_addr)
++#endif
+ 
+ struct lwip_sock;
+ 
+@@ -142,6 +149,7 @@ struct lwip_setgetsockopt_data {
+ };
+ #endif /* !LWIP_TCPIP_CORE_LOCKING */
+ 
++#if 0
+ #if !defined(iovec)
+ struct iovec {
+   void  *iov_base;
+@@ -442,6 +450,7 @@ struct timeval {
+   long    tv_usec;        /* and microseconds */
+ };
+ #endif /* LWIP_TIMEVAL_PRIVATE */
++#endif
+ 
+ #define lwip_socket_init() /* Compatibility define, no init needed. */
+ void lwip_socket_thread_init(void); /* LWIP_NETCONN_SEM_PER_THREAD==1: initialize thread-local semaphore */
+Index: lwip/src/include/lwip/ip.h
+===================================================================
+--- lwip.orig/src/include/lwip/ip.h
++++ lwip/src/include/lwip/ip.h
+@@ -91,12 +91,18 @@ struct ip_pcb {
+   IP_PCB;
+ };
+ 
++#if 0
+ /*
+  * Option flags per-socket. These are the same like SO_XXX in sockets.h
+  */
+ #define SOF_REUSEADDR     0x04U  /* allow local address reuse */
+ #define SOF_KEEPALIVE     0x08U  /* keep connections alive */
+ #define SOF_BROADCAST     0x20U  /* permit to send and to receive broadcast messages (see IP_SOF_BROADCAST option) */
++#else
++#define SOF_REUSEADDR     SO_REUSEADDR
++#define SOF_KEEPALIVE     SO_KEEPALIVE
++#define SOF_BROADCAST     SO_BROADCAST
++#endif
+ 
+ /* These flags are inherited (e.g. from a listen-pcb to a connection-pcb): */
+ #define SOF_INHERITED   (SOF_REUSEADDR|SOF_KEEPALIVE)
+Index: lwip/src/api/sockets.c
+===================================================================
+--- lwip.orig/src/api/sockets.c
++++ lwip/src/api/sockets.c
+@@ -77,9 +77,19 @@
+ #define LWIP_NETCONN 0
+ #endif
+ 
++#ifdef BSD
++#define SET_LEN(sin) \
++      (sin)->sin_len = sizeof(struct sockaddr_in);
++#define SET_LEN6(sin6) \
++      (sin6)->sin6_len = sizeof(struct sockaddr_in6);
++#else
++#define SET_LEN(sin)
++#define SET_LEN6(sin6)
++#endif
++
+ #if LWIP_IPV4
+ #define IP4ADDR_PORT_TO_SOCKADDR(sin, ipaddr, port) do { \
+-      (sin)->sin_len = sizeof(struct sockaddr_in); \
++      SET_LEN(sin) \
+       (sin)->sin_family = AF_INET; \
+       (sin)->sin_port = lwip_htons((port)); \
+       inet_addr_from_ip4addr(&(sin)->sin_addr, ipaddr); \
+@@ -91,7 +101,7 @@
+ 
+ #if LWIP_IPV6
+ #define IP6ADDR_PORT_TO_SOCKADDR(sin6, ipaddr, port) do { \
+-      (sin6)->sin6_len = sizeof(struct sockaddr_in6); \
++      SET_LEN6(sin6) \
+       (sin6)->sin6_family = AF_INET6; \
+       (sin6)->sin6_port = lwip_htons((port)); \
+       (sin6)->sin6_flowinfo = 0; \
+@@ -537,9 +547,11 @@ lwip_accept(int s, struct sockaddr *addr
+     LWIP_ASSERT("addr valid but addrlen NULL", addrlen != NULL);
+ 
+     IPADDR_PORT_TO_SOCKADDR(&tempaddr, &naddr, port);
++#ifdef BSD
+     if (*addrlen > tempaddr.sa.sa_len) {
+       *addrlen = tempaddr.sa.sa_len;
+     }
++#endif
+     MEMCPY(addr, &tempaddr, *addrlen);
+ 
+     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_accept(%d) returning new sock=%d addr=", s, newsock));
+@@ -878,9 +890,11 @@ lwip_recvfrom(int s, void *mem, size_t l
+         if (from && fromlen)
+ #endif /* SOCKETS_DEBUG */
+         {
++#ifdef BSD
+           if (*fromlen > saddr.sa.sa_len) {
+             *fromlen = saddr.sa.sa_len;
+           }
++#endif
+           MEMCPY(from, &saddr, *fromlen);
+         }
+       }
+@@ -951,7 +965,9 @@ lwip_send(int s, const void *data, size_
+   }
+ 
+   write_flags = NETCONN_COPY |
++#ifdef MSG_MORE
+     ((flags & MSG_MORE)     ? NETCONN_MORE      : 0) |
++#endif
+     ((flags & MSG_DONTWAIT) ? NETCONN_DONTBLOCK : 0);
+   written = 0;
+   err = netconn_write_partly(sock->conn, data, size, write_flags, &written);
+@@ -990,7 +1006,9 @@ lwip_sendmsg(int s, const struct msghdr
+   if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == NETCONN_TCP) {
+ #if LWIP_TCP
+     write_flags = NETCONN_COPY |
++#ifdef MSG_MORE
+     ((flags & MSG_MORE)     ? NETCONN_MORE      : 0) |
++#endif
+     ((flags & MSG_DONTWAIT) ? NETCONN_DONTBLOCK : 0);
+ 
+     for (i = 0; i < msg->msg_iovlen; i++) {
+@@ -1764,9 +1782,11 @@ lwip_getaddrname(int s, struct sockaddr
+   ip_addr_debug_print_val(SOCKETS_DEBUG, naddr);
+   LWIP_DEBUGF(SOCKETS_DEBUG, (" port=%"U16_F")\n", port));
+ 
++#ifdef BSD
+   if (*namelen > saddr.sa.sa_len) {
+     *namelen = saddr.sa.sa_len;
+   }
++#endif
+   MEMCPY(name, &saddr, *namelen);
+ 
+   sock_set_errno(sock, 0);
+@@ -1994,6 +2014,7 @@ lwip_getsockopt_impl(int s, int level, i
+       break;
+ #endif /* LWIP_SO_LINGER */
+ #if LWIP_UDP
++#ifdef SO_NO_CHECK
+     case SO_NO_CHECK:
+       LWIP_SOCKOPT_CHECK_OPTLEN_CONN_PCB_TYPE(sock, *optlen, int, NETCONN_UDP);
+ #if LWIP_UDPLITE
+@@ -2004,6 +2025,7 @@ lwip_getsockopt_impl(int s, int level, i
+ #endif /* LWIP_UDPLITE */
+       *(int*)optval = (udp_flags(sock->conn->pcb.udp) & UDP_FLAGS_NOCHKSUM) ? 1 : 0;
+       break;
++#endif
+ #endif /* LWIP_UDP*/
+     default:
+       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getsockopt(%d, SOL_SOCKET, UNIMPL: optname=0x%x, ..)\n",
+@@ -2080,11 +2102,13 @@ lwip_getsockopt_impl(int s, int level, i
+       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getsockopt(%d, IPPROTO_TCP, TCP_NODELAY) = %s\n",
+                   s, (*(int*)optval)?"on":"off") );
+       break;
++#ifdef TCP_KEEPALIVE
+     case TCP_KEEPALIVE:
+       *(int*)optval = (int)sock->conn->pcb.tcp->keep_idle;
+       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getsockopt(%d, IPPROTO_TCP, TCP_KEEPALIVE) = %d\n",
+                   s, *(int *)optval));
+       break;
++#endif
+ 
+ #if LWIP_TCP_KEEPALIVE
+     case TCP_KEEPIDLE:
+@@ -2141,6 +2165,7 @@ lwip_getsockopt_impl(int s, int level, i
+       return ENOPROTOOPT;
+     }
+     switch (optname) {
++#ifdef UDPLITE_SEND_CSCOV
+     case UDPLITE_SEND_CSCOV:
+       *(int*)optval = sock->conn->pcb.udp->chksum_len_tx;
+       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getsockopt(%d, IPPROTO_UDPLITE, UDPLITE_SEND_CSCOV) = %d\n",
+@@ -2151,6 +2176,7 @@ lwip_getsockopt_impl(int s, int level, i
+       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getsockopt(%d, IPPROTO_UDPLITE, UDPLITE_RECV_CSCOV) = %d\n",
+                   s, (*(int*)optval)) );
+       break;
++#endif
+     default:
+       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getsockopt(%d, IPPROTO_UDPLITE, UNIMPL: optname=0x%x, ..)\n",
+                   s, optname));
+@@ -2359,6 +2385,7 @@ lwip_setsockopt_impl(int s, int level, i
+       break;
+ #endif /* LWIP_SO_LINGER */
+ #if LWIP_UDP
++#ifdef SO_NO_CHECK
+     case SO_NO_CHECK:
+       LWIP_SOCKOPT_CHECK_OPTLEN_CONN_PCB_TYPE(sock, optlen, int, NETCONN_UDP);
+ #if LWIP_UDPLITE
+@@ -2373,6 +2400,7 @@ lwip_setsockopt_impl(int s, int level, i
+         udp_setflags(sock->conn->pcb.udp, udp_flags(sock->conn->pcb.udp) & ~UDP_FLAGS_NOCHKSUM);
+       }
+       break;
++#endif
+ #endif /* LWIP_UDP */
+     default:
+       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_setsockopt(%d, SOL_SOCKET, UNIMPL: optname=0x%x, ..)\n",
+@@ -2476,11 +2504,13 @@ lwip_setsockopt_impl(int s, int level, i
+       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_setsockopt(%d, IPPROTO_TCP, TCP_NODELAY) -> %s\n",
+                   s, (*(const int *)optval)?"on":"off") );
+       break;
++#ifdef TCP_KEEPALIVE
+     case TCP_KEEPALIVE:
+       sock->conn->pcb.tcp->keep_idle = (u32_t)(*(const int*)optval);
+       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_setsockopt(%d, IPPROTO_TCP, TCP_KEEPALIVE) -> %"U32_F"\n",
+                   s, sock->conn->pcb.tcp->keep_idle));
+       break;
++#endif
+ 
+ #if LWIP_TCP_KEEPALIVE
+     case TCP_KEEPIDLE:
+@@ -2541,6 +2571,7 @@ lwip_setsockopt_impl(int s, int level, i
+       return ENOPROTOOPT;
+     }
+     switch (optname) {
++#ifdef UDPLITE_SEND_CSCOV
+     case UDPLITE_SEND_CSCOV:
+       if ((*(const int*)optval != 0) && ((*(const int*)optval < 8) || (*(const int*)optval > 0xffff))) {
+         /* don't allow illegal values! */
+@@ -2561,6 +2592,7 @@ lwip_setsockopt_impl(int s, int level, i
+       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_setsockopt(%d, IPPROTO_UDPLITE, UDPLITE_RECV_CSCOV) -> %d\n",
+                   s, (*(const int*)optval)) );
+       break;
++#endif
+     default:
+       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_setsockopt(%d, IPPROTO_UDPLITE, UNIMPL: optname=0x%x, ..)\n",
+                   s, optname));
+Index: lwip/src/api/netdb.c
+===================================================================
+--- lwip.orig/src/api/netdb.c
++++ lwip/src/api/netdb.c
+@@ -384,7 +384,9 @@ lwip_getaddrinfo(const char *nodename, c
+     /* set up sockaddr */
+     inet_addr_from_ip4addr(&sa4->sin_addr, ip_2_ip4(&addr));
+     sa4->sin_family = AF_INET;
++#ifdef BSD
+     sa4->sin_len = sizeof(struct sockaddr_in);
++#endif
+     sa4->sin_port = lwip_htons((u16_t)port_nr);
+     ai->ai_family = AF_INET;
+ #endif /* LWIP_IPV4 */

@@ -1,0 +1,5 @@
+bug-36167 --binary
+port
+autoconf
+errno
+posix
