@@ -14,7 +14,7 @@ Architecture: any
 Multi-Arch: same
 Depends: liblwip0 (= ${binary:Version}), ${misc:Depends}
 Description: small implementation of the TCP/IP protocol suite - development files
- lwIP is a small independent implementation of the TCP/IP protocol
+ lwIP is a small independent implementation of the TCP/IPv4/IPv6 protocol
  suite that has been developed by Adam Dunkels at the Computer and
  Networks Architectures (CNA) lab at the Swedish Institute of Computer
  Science (SICS).
@@ -31,7 +31,7 @@ Architecture: any
 Multi-arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: small implementation of the TCP/IP protocol suite - shared library
- lwIP is a small independent implementation of the TCP/IP protocol
+ lwIP is a small independent implementation of the TCP/IPv4/IPv6 protocol
  suite that has been developed by Adam Dunkels at the Computer and
  Networks Architectures (CNA) lab at the Swedish Institute of Computer
  Science (SICS).
@@ -47,7 +47,7 @@ Package: liblwip-doc
 Section: doc
 Architecture: all
 Description: small implementation of the TCP/IP protocol suite - documentation
- lwIP is a small independent implementation of the TCP/IP protocol
+ lwIP is a small independent implementation of the TCP/IPv4/IPv6 protocol
  suite that has been developed by Adam Dunkels at the Computer and
  Networks Architectures (CNA) lab at the Swedish Institute of Computer
  Science (SICS).
