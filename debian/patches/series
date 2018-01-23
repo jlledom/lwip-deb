@@ -1,4 +1,4 @@
-bug-36167 --binary
+bug-36167
 port
 autoconf
 errno

@@ -1,22 +1,27 @@
-commit 4d624d8c4f47d06a6fdc82cb6737c06f4e69804c
-Author: Joan Lledó <jlledom@member.fsf.org>
-Date:   Sat Nov 11 08:37:28 2017 +0100
-
-    Fix bug #36167 in lwip
-    
-    https://savannah.nongnu.org/bugs/?36167
-
 diff --git a/src/core/tcp.c b/src/core/tcp.c
-index 75be86b..17a51a8 100644
+index 7103a52..ccfa3c1 100644
 --- a/src/core/tcp.c
 +++ b/src/core/tcp.c
-@@ -782,7 +782,8 @@ tcp_recved(struct tcp_pcb *pcb, u16_t len)
+@@ -804,7 +804,7 @@ tcp_recved(struct tcp_pcb *pcb, u16_t len)
      pcb->rcv_wnd = TCP_WND_MAX(pcb);
    } else if (pcb->rcv_wnd == 0) {
      /* rcv_wnd overflowed */
 -    if ((pcb->state == CLOSE_WAIT) || (pcb->state == LAST_ACK)) {
-+    if ((pcb->state == CLOSE_WAIT) || (pcb->state == LAST_ACK)
-+        || (pcb->state == TIME_WAIT)) {
++    if (TCP_STATE_IS_CLOSING(pcb->state)) {
        /* In passive close, we allow this, since the FIN bit is added to rcv_wnd
           by the stack itself, since it is not mandatory for an application
           to call tcp_recved() for the FIN bit, but e.g. the netconn API does so. */
+diff --git a/src/include/lwip/tcp.h b/src/include/lwip/tcp.h
+index 3845b9f..fb7fa17 100644
+--- a/src/include/lwip/tcp.h
++++ b/src/include/lwip/tcp.h
+@@ -424,6 +424,9 @@ const char* tcp_debug_state_str(enum tcp_state s);
+ /* for compatibility with older implementation */
+ #define tcp_new_ip6() tcp_new_ip_type(IPADDR_TYPE_V6)
+ 
++/* ATTENTION: this depends on state number ordering! */
++#define TCP_STATE_IS_CLOSING(state) ((state) >= FIN_WAIT_1)
++
+ #ifdef __cplusplus
+ }
+ #endif
