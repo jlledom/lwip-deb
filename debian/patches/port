@@ -1,8 +1,9 @@
-Index: lwip/port/include/arch/cc.h
-===================================================================
+diff --git a/port/include/arch/cc.h b/port/include/arch/cc.h
+new file mode 100644
+index 0000000..904368a
 --- /dev/null
-+++ lwip/port/include/arch/cc.h
-@@ -0,0 +1,77 @@
++++ b/port/include/arch/cc.h
+@@ -0,0 +1,68 @@
 +/*
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +   Written by Joan Lledó.
@@ -20,7 +21,7 @@ Index: lwip/port/include/arch/cc.h
 +   General Public License for more details.
 +
 +   You should have received a copy of the GNU General Public License
-+   along with the GNU Hurd.  If not, see <http://www.gnu.org/licenses/>.  */
++   along with the GNU Hurd. If not, see <http://www.gnu.org/licenses/>.  */
 +
 +#ifndef LWIP_ARCH_CC_H
 +#define LWIP_ARCH_CC_H
@@ -39,17 +40,8 @@ Index: lwip/port/include/arch/cc.h
 +#define LWIP_TIMEVAL_PRIVATE  0
 +#include <sys/time.h>
 +
-+/* Use our own <sys/socket.h> */
-+#include <sys/socket.h>
-+#include <netinet/in.h>
-+#include <netinet/tcp.h>
-+#include <netinet/udp.h>
-+
 +/* We need INT_MAX */
 +#include <limits.h>
-+
-+/* We use poll() instead of select()*/
-+#include <poll.h>
 +
 +/* Use our own ioctls */
 +#include <sys/ioctl.h>
@@ -80,10 +72,11 @@ Index: lwip/port/include/arch/cc.h
 +  } while(0)
 +
 +#endif /* LWIP_ARCH_CC_H */
-Index: lwip/port/include/arch/sys_arch.h
-===================================================================
+diff --git a/port/include/arch/sys_arch.h b/port/include/arch/sys_arch.h
+new file mode 100644
+index 0000000..5e6eb32
 --- /dev/null
-+++ lwip/port/include/arch/sys_arch.h
++++ b/port/include/arch/sys_arch.h
 @@ -0,0 +1,61 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
@@ -146,11 +139,12 @@ Index: lwip/port/include/arch/sys_arch.h
 +
 +#endif /* LWIP_ARCH_SYS_ARCH_H */
 +
-Index: lwip/port/include/lwipopts.h
-===================================================================
+diff --git a/port/include/lwipopts.h b/port/include/lwipopts.h
+new file mode 100644
+index 0000000..f30aab8
 --- /dev/null
-+++ lwip/port/include/lwipopts.h
-@@ -0,0 +1,137 @@
++++ b/port/include/lwipopts.h
+@@ -0,0 +1,142 @@
 +/*
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +   Written by Joan Lledó.
@@ -168,7 +162,7 @@ Index: lwip/port/include/lwipopts.h
 +   General Public License for more details.
 +
 +   You should have received a copy of the GNU General Public License
-+   along with the GNU Hurd.  If not, see <http://www.gnu.org/licenses/>.  */
++   along with the GNU Hurd. If not, see <http://www.gnu.org/licenses/>.  */
 +
 +#ifndef HURD_LWIP_LWIPOPTS_H
 +#define HURD_LWIP_LWIPOPTS_H
@@ -190,6 +184,11 @@ Index: lwip/port/include/lwipopts.h
 +#define MEMP_MEM_MALLOC   1
 +#define MEM_USE_POOLS     0
 +#define MEM_ALIGNMENT     4
++
++/* Use Glibc's sockets headers */
++#define LWIP_STD_SOCKETS  1
++#define LWIP_INCLUDE_STD_SOCKETS  "posix/socket.h"
++#define LWIP_INCLUDE_STD_INET     "posix/inet.h"
 +
 +/* Only send complete packets to the device */
 +#define LWIP_NETIF_TX_SINGLE_PBUF 1
@@ -288,10 +287,11 @@ Index: lwip/port/include/lwipopts.h
 +#endif
 +
 +#endif
-Index: lwip/port/sys_arch.c
-===================================================================
+diff --git a/port/sys_arch.c b/port/sys_arch.c
+new file mode 100644
+index 0000000..17be73f
 --- /dev/null
-+++ lwip/port/sys_arch.c
++++ b/port/sys_arch.c
 @@ -0,0 +1,741 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
