@@ -33,7 +33,7 @@ index d72724f..800d0f1 100644
 +  if (select_cb_list != NULL) {
 +    select_cb_list->prev = select_cb;
 +  }
-+  select_cb_list = &select_cb;
++  select_cb_list = select_cb;
 +  /* Increasing this counter tells event_callback that the list has changed. */
 +  select_cb_ctr++;
 +
@@ -52,7 +52,7 @@ index d72724f..800d0f1 100644
 +  if (select_cb->next != NULL) {
 +    select_cb->next->prev = select_cb->prev;
 +  }
-+  if (select_cb_list == &select_cb) {
++  if (select_cb_list == select_cb) {
 +    LWIP_ASSERT("select_cb->prev == NULL", select_cb->prev == NULL);
 +    select_cb_list = select_cb->next;
 +  } else {
