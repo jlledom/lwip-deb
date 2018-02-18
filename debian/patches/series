@@ -4,3 +4,4 @@ posix
 errno
 bug-36167
 poll
+max_sockets
