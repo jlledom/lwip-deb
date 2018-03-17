@@ -294,7 +294,7 @@
 +    if (!nready) {
 +      /* Still none ready, just wait to be woken */
 +      waitres = sys_arch_sem_wait_intr(SELECT_SEM_PTR(select_cb.sem),
-+                                        timeout < 0 ? 0 : timeout*1000);
++                                        timeout < 0 ? 0 : timeout);
 +#if LWIP_NETCONN_SEM_PER_THREAD
 +      waited = 1;
 +#endif
