@@ -121,7 +121,7 @@
  
  #if LWIP_NETCONN_SEM_PER_THREAD
      if (select_cb.sem_signalled && (!waited || (waitres == SYS_ARCH_TIMEOUT))) {
-@@ -1563,6 +1591,245 @@
+@@ -1563,6 +1591,253 @@
    return nready;
  }
  
@@ -243,6 +243,7 @@
 +{
 +  u32_t waitres = 0;
 +  int nready;
++  u32_t msectimeout;
 +  struct lwip_select_cb select_cb;
 +#if LWIP_NETCONN_SEM_PER_THREAD
 +  int waited = 0;
@@ -293,8 +294,15 @@
 +
 +    if (!nready) {
 +      /* Still none ready, just wait to be woken */
-+      waitres = sys_arch_sem_wait_intr(SELECT_SEM_PTR(select_cb.sem),
-+                                        timeout < 0 ? 0 : timeout);
++      if (timeout < 0) {
++        /* Wait forever */
++        msectimeout = 0;
++      } else {
++        /* timeout == 0 would have been handled earlier. */
++        LWIP_ASSERT("timeout > 0", timeout > 0);
++        msectimeout = timeout;
++      }
++      waitres = sys_arch_sem_wait_intr(SELECT_SEM_PTR(select_cb.sem), msectimeout);
 +#if LWIP_NETCONN_SEM_PER_THREAD
 +      waited = 1;
 +#endif
@@ -367,7 +375,7 @@
  /**
   * Callback registered in the netconn layer for each socket-netconn.
   * Processes recvevent (data available) and wakes up tasks waiting for select.
-@@ -1649,20 +1916,27 @@
+@@ -1649,20 +1924,27 @@
      if (scb->sem_signalled == 0) {
        /* semaphore not signalled yet */
        int do_signal = 0;
