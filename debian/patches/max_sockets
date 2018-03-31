@@ -223,13 +223,13 @@
  
    if (lastdata != NULL) {
      if (is_tcp) {
-@@ -504,7 +585,9 @@
-     }
+@@ -512,7 +593,9 @@
+     sock_set_errno(sock, ENFILE);
      return -1;
    }
 +#if !LWIP_SOCKET_OPEN_COUNT
-   LWIP_ASSERT("newconn != NULL", newconn != NULL);
+   LWIP_ASSERT("invalid socket index", (newsock >= LWIP_SOCKET_OFFSET) && (newsock < NUM_SOCKETS + LWIP_SOCKET_OFFSET));
 +#endif /* !LWIP_SOCKET_OPEN_COUNT */
+   LWIP_ASSERT("newconn->callback == event_callback", newconn->callback == event_callback);
+   nsock = &sockets[newsock - LWIP_SOCKET_OFFSET];
  
-   newsock = alloc_socket(newconn, 1);
-   if (newsock == -1) {
