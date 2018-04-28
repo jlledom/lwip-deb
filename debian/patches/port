@@ -71,7 +71,7 @@
 +#endif /* LWIP_ARCH_CC_H */
 --- /dev/null
 +++ b/port/include/arch/sys_arch.h
-@@ -0,0 +1,61 @@
+@@ -0,0 +1,64 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
 + * All rights reserved. 
@@ -108,6 +108,9 @@
 +
 +#define SYS_MBOX_NULL NULL
 +#define SYS_SEM_NULL  NULL
++
++/* Return code for an interrupted timed wait */
++#define SYS_ARCH_INTR 0xfffffffeUL
 +
 +typedef u32_t sys_prot_t;
 +
@@ -280,7 +283,7 @@
 +#endif
 --- /dev/null
 +++ b/port/sys_arch.c
-@@ -0,0 +1,741 @@
+@@ -0,0 +1,747 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
 + * All rights reserved. 
@@ -800,6 +803,8 @@
 +#endif
 +  if (ret == ETIMEDOUT) {
 +    return SYS_ARCH_TIMEOUT;
++  } else if (ret == EINTR) {
++    return SYS_ARCH_INTR;
 +  }
 +
 +  /* Calculate for how long we waited for the cond. */
@@ -832,12 +837,16 @@
 +      if (time_needed == SYS_ARCH_TIMEOUT) {
 +        pthread_mutex_unlock(&(sem->mutex));
 +        return SYS_ARCH_TIMEOUT;
++      } else if(time_needed == SYS_ARCH_INTR) {
++         /* This means we were interrupted, so don't wait again */
++        sem->c++;
++
++        if (sem->c > 1) {
++          sem->c = 1;
++        }
 +      }
-+      /*      pthread_mutex_unlock(&(sem->mutex));
-+              return time_needed; */
 +    } else {
-+      if(cond_wait_intr(&(sem->cond), &(sem->mutex), 0))
-+      {
++      if(cond_wait_intr(&(sem->cond), &(sem->mutex), 0)) {
 +        /* This means we were interrupted, so don't wait again */
 +        sem->c++;
 +
