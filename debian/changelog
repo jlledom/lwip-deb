@@ -2,4 +2,4 @@ lwip (2.0.3-1) unstable; urgency=medium
 
   * Initial release (Closes: Bug#884641)
 
- -- Samuel Thibault <sthibault@debian.org>  Sun, 17 Dec 2017 23:18:45 +0000
+ -- Samuel Thibault <sthibault@debian.org>  Tue, 01 May 2018 01:52:18 +0200
