@@ -138,7 +138,7 @@
 +
 --- /dev/null
 +++ b/port/include/lwipopts.h
-@@ -0,0 +1,142 @@
+@@ -0,0 +1,131 @@
 +/*
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +   Written by Joan Lledó.
@@ -167,22 +167,11 @@
 +/* Don't rename Sockets API functions */
 +#define LWIP_COMPAT_SOCKETS   0
 +
-+/* Don't limit the number of sockets */
-+#define LWIP_SOCKET_OPEN_COUNT  1
-+
-+/* We're using lwip_poll() */
-+#define LWIP_POLL               1
-+
 +/* Use Glibc malloc()/free() */
 +#define MEM_LIBC_MALLOC   1
 +#define MEMP_MEM_MALLOC   1
 +#define MEM_USE_POOLS     0
 +#define MEM_ALIGNMENT     4
-+
-+/* Use Glibc's sockets headers */
-+#define LWIP_STD_SOCKETS  1
-+#define LWIP_INCLUDE_STD_SOCKETS  "posix/socket.h"
-+#define LWIP_INCLUDE_STD_INET     "posix/inet.h"
 +
 +/* Only send complete packets to the device */
 +#define LWIP_NETIF_TX_SINGLE_PBUF 1

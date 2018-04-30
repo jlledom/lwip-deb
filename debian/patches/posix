@@ -1568,3 +1568,17 @@
 -#endif /* LWIP_SOCKET */
 -
  #endif /* LWIP_HDR_SOCKETS_H */
+--- a/port/include/lwipopts.h
++++ b/port/include/lwipopts.h
+@@ -26,6 +26,11 @@
+ /* Don't rename Sockets API functions */
+ #define LWIP_COMPAT_SOCKETS   0
+ 
++/* Use Glibc's sockets headers */
++#define LWIP_STD_SOCKETS  1
++#define LWIP_INCLUDE_STD_SOCKETS  "posix/socket.h"
++#define LWIP_INCLUDE_STD_INET     "posix/inet.h"
++
+ /* Use Glibc malloc()/free() */
+ #define MEM_LIBC_MALLOC   1
+ #define MEMP_MEM_MALLOC   1

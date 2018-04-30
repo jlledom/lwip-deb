@@ -233,3 +233,15 @@
    LWIP_ASSERT("newconn->callback == event_callback", newconn->callback == event_callback);
    nsock = &sockets[newsock - LWIP_SOCKET_OFFSET];
  
+--- a/port/include/lwipopts.h
++++ b/port/include/lwipopts.h
+@@ -26,6 +26,9 @@
+ /* Don't rename Sockets API functions */
+ #define LWIP_COMPAT_SOCKETS   0
+ 
++/* Don't limit the number of sockets */
++#define LWIP_SOCKET_OPEN_COUNT  1
++
+ /* We're using lwip_poll() */
+ #define LWIP_POLL               1
+ 

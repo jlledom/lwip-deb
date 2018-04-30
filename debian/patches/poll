@@ -492,3 +492,15 @@
  int lwip_ioctl(int s, long cmd, void *argp);
  int lwip_fcntl(int s, int cmd, int val);
  
+--- a/port/include/lwipopts.h
++++ b/port/include/lwipopts.h
+@@ -26,6 +26,9 @@
+ /* Don't rename Sockets API functions */
+ #define LWIP_COMPAT_SOCKETS   0
+ 
++/* We're using lwip_poll() */
++#define LWIP_POLL               1
++
+ /* Use Glibc's sockets headers */
+ #define LWIP_STD_SOCKETS  1
+ #define LWIP_INCLUDE_STD_SOCKETS  "posix/socket.h"

@@ -1,7 +1,7 @@
-autoconf
 port
 posix
 errno
+autoconf
 bug-36167
 poll
 max_sockets
