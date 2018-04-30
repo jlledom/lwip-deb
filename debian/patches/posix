@@ -1,5 +1,20 @@
 Won't get to upstream
 
+---
+ port/include/arch/cc.h          |    6 
+ port/include/lwipopts.h         |    5 
+ port/include/posix/inet.h       |   63 ++++
+ port/include/posix/socket.h     |   45 +++
+ src/api/netdb.c                 |    4 
+ src/api/sockets.c               |   20 +
+ src/include/lwip/inet.h         |  129 ---------
+ src/include/lwip/ip.h           |    7 
+ src/include/lwip/lwip_inet.h    |  164 +++++++++++
+ src/include/lwip/lwip_sockets.h |  569 ++++++++++++++++++++++++++++++++++++++++
+ src/include/lwip/opt.h          |    9 
+ src/include/lwip/sockets.h      |  524 ------------------------------------
+ 12 files changed, 906 insertions(+), 639 deletions(-)
+
 --- /dev/null
 +++ b/port/include/posix/inet.h
 @@ -0,0 +1,63 @@
@@ -68,7 +83,7 @@ Won't get to upstream
 +#endif /* HURD_LWIP_POSIX_INET_H */
 --- /dev/null
 +++ b/port/include/posix/socket.h
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,45 @@
 +/*
 +   Copyright (C) 2018 Free Software Foundation, Inc.
 +   Written by Joan Lledó.
@@ -99,9 +114,15 @@ Won't get to upstream
 +#endif
 +
 +/* Unsuported indetifiers */
++#ifndef SO_NO_CHECK
 +#define SO_NO_CHECK         0x0
++#endif
++#ifndef MSG_MORE
 +#define MSG_MORE            0x0
++#endif
++#ifndef TCP_KEEPALIVE
 +#define TCP_KEEPALIVE       0x0
++#endif
 +
 +#ifdef __cplusplus
 +}
@@ -249,7 +270,7 @@ Won't get to upstream
  #endif /* LWIP_HDR_INET_H */
 --- a/src/include/lwip/ip.h
 +++ b/src/include/lwip/ip.h
-@@ -94,9 +94,16 @@
+@@ -94,9 +94,16 @@ struct ip_pcb {
  /*
   * Option flags per-socket. These are the same like SO_XXX in sockets.h
   */
@@ -435,7 +456,7 @@ Won't get to upstream
 +#endif /* LWIP_HDR_PRIV_INET_H */
 --- /dev/null
 +++ b/src/include/lwip/lwip_sockets.h
-@@ -0,0 +1,567 @@
+@@ -0,0 +1,569 @@
 +/**
 + * @file
 + * Socket API (to be used from non-TCPIP threads)
@@ -489,6 +510,8 @@ Won't get to upstream
 +#ifdef __cplusplus
 +extern "C" {
 +#endif
++
++#define _HAVE_SA_LEN 1
 +
 +/* If your port already typedef's sa_family_t, define SA_FAMILY_T_DEFINED
 +   to prevent this code from redefining it. */
@@ -1474,7 +1497,7 @@ Won't get to upstream
  int lwip_accept(int s, struct sockaddr *addr, socklen_t *addrlen);
  int lwip_bind(int s, const struct sockaddr *name, socklen_t namelen);
  int lwip_shutdown(int s, int how);
-@@ -506,88 +78,16 @@
+@@ -506,88 +78,16 @@ int lwip_select(int maxfdp1, fd_set *rea
  int lwip_ioctl(int s, long cmd, void *argp);
  int lwip_fcntl(int s, int cmd, int val);
  
@@ -1599,3 +1622,93 @@ Won't get to upstream
  /* Use our own htons() and pals */
  #define LWIP_DONT_PROVIDE_BYTEORDER_FUNCTIONS 1
  
+--- a/src/api/netdb.c
++++ b/src/api/netdb.c
+@@ -374,7 +374,9 @@ lwip_getaddrinfo(const char *nodename, c
+     /* set up sockaddr */
+     inet6_addr_from_ip6addr(&sa6->sin6_addr, ip_2_ip6(&addr));
+     sa6->sin6_family = AF_INET6;
++#ifdef _HAVE_SA_LEN
+     sa6->sin6_len = sizeof(struct sockaddr_in6);
++#endif
+     sa6->sin6_port = lwip_htons((u16_t)port_nr);
+     ai->ai_family = AF_INET6;
+ #endif /* LWIP_IPV6 */
+@@ -384,7 +386,9 @@ lwip_getaddrinfo(const char *nodename, c
+     /* set up sockaddr */
+     inet_addr_from_ip4addr(&sa4->sin_addr, ip_2_ip4(&addr));
+     sa4->sin_family = AF_INET;
++#ifdef _HAVE_SA_LEN
+     sa4->sin_len = sizeof(struct sockaddr_in);
++#endif
+     sa4->sin_port = lwip_htons((u16_t)port_nr);
+     ai->ai_family = AF_INET;
+ #endif /* LWIP_IPV4 */
+--- a/src/api/sockets.c
++++ b/src/api/sockets.c
+@@ -77,9 +77,19 @@
+ #define LWIP_NETCONN 0
+ #endif
+ 
++#if _HAVE_SA_LEN
++#define IP4ADDR_SOCKADDR_SET_LEN(sin) \
++      (sin)->sin_len = sizeof(struct sockaddr_in)
++#define IP6ADDR_SOCKADDR_SET_LEN(sin6) \
++      (sin6)->sin6_len = sizeof(struct sockaddr_in6)
++#else
++#define IP4ADDR_SOCKADDR_SET_LEN(sin) (void)0
++#define IP6ADDR_SOCKADDR_SET_LEN(sin6) (void)0
++#endif
++
+ #if LWIP_IPV4
+ #define IP4ADDR_PORT_TO_SOCKADDR(sin, ipaddr, port) do { \
+-      (sin)->sin_len = sizeof(struct sockaddr_in); \
++      IP4ADDR_SOCKADDR_SET_LEN(sin); \
+       (sin)->sin_family = AF_INET; \
+       (sin)->sin_port = lwip_htons((port)); \
+       inet_addr_from_ip4addr(&(sin)->sin_addr, ipaddr); \
+@@ -91,7 +101,7 @@
+ 
+ #if LWIP_IPV6
+ #define IP6ADDR_PORT_TO_SOCKADDR(sin6, ipaddr, port) do { \
+-      (sin6)->sin6_len = sizeof(struct sockaddr_in6); \
++      IP6ADDR_SOCKADDR_SET_LEN(sin6); \
+       (sin6)->sin6_family = AF_INET6; \
+       (sin6)->sin6_port = lwip_htons((port)); \
+       (sin6)->sin6_flowinfo = 0; \
+@@ -537,9 +547,11 @@ lwip_accept(int s, struct sockaddr *addr
+     LWIP_ASSERT("addr valid but addrlen NULL", addrlen != NULL);
+ 
+     IPADDR_PORT_TO_SOCKADDR(&tempaddr, &naddr, port);
++#ifdef _HAVE_SA_LEN
+     if (*addrlen > tempaddr.sa.sa_len) {
+       *addrlen = tempaddr.sa.sa_len;
+     }
++#endif
+     MEMCPY(addr, &tempaddr, *addrlen);
+ 
+     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_accept(%d) returning new sock=%d addr=", s, newsock));
+@@ -878,9 +890,11 @@ lwip_recvfrom(int s, void *mem, size_t l
+         if (from && fromlen)
+ #endif /* SOCKETS_DEBUG */
+         {
++#ifdef _HAVE_SA_LEN
+           if (*fromlen > saddr.sa.sa_len) {
+             *fromlen = saddr.sa.sa_len;
+           }
++#endif
+           MEMCPY(from, &saddr, *fromlen);
+         }
+       }
+@@ -1764,9 +1778,11 @@ lwip_getaddrname(int s, struct sockaddr
+   ip_addr_debug_print_val(SOCKETS_DEBUG, naddr);
+   LWIP_DEBUGF(SOCKETS_DEBUG, (" port=%"U16_F")\n", port));
+ 
++#ifdef _HAVE_SA_LEN
+   if (*namelen > saddr.sa.sa_len) {
+     *namelen = saddr.sa.sa_len;
+   }
++#endif
+   MEMCPY(name, &saddr, *namelen);
+ 
+   sock_set_errno(sock, 0);
