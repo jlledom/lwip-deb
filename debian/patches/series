@@ -1,5 +1,7 @@
-bug-36167 --binary
 port
-autoconf
-errno
 posix
+errno
+autoconf
+bug-36167
+poll
+max_sockets

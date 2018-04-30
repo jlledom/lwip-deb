@@ -1,3 +1,5 @@
+Already upstream
+
 Index: lwip/src/api/sockets.c
 ===================================================================
 --- lwip.orig/src/api/sockets.c

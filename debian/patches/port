@@ -1,8 +1,8 @@
-Index: lwip/port/include/arch/cc.h
-===================================================================
+Not intended to be upstream
+
 --- /dev/null
-+++ lwip/port/include/arch/cc.h
-@@ -0,0 +1,77 @@
++++ b/port/include/arch/cc.h
+@@ -0,0 +1,68 @@
 +/*
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +   Written by Joan Lledó.
@@ -20,7 +20,7 @@ Index: lwip/port/include/arch/cc.h
 +   General Public License for more details.
 +
 +   You should have received a copy of the GNU General Public License
-+   along with the GNU Hurd.  If not, see <http://www.gnu.org/licenses/>.  */
++   along with the GNU Hurd. If not, see <http://www.gnu.org/licenses/>.  */
 +
 +#ifndef LWIP_ARCH_CC_H
 +#define LWIP_ARCH_CC_H
@@ -39,17 +39,8 @@ Index: lwip/port/include/arch/cc.h
 +#define LWIP_TIMEVAL_PRIVATE  0
 +#include <sys/time.h>
 +
-+/* Use our own <sys/socket.h> */
-+#include <sys/socket.h>
-+#include <netinet/in.h>
-+#include <netinet/tcp.h>
-+#include <netinet/udp.h>
-+
 +/* We need INT_MAX */
 +#include <limits.h>
-+
-+/* We use poll() instead of select()*/
-+#include <poll.h>
 +
 +/* Use our own ioctls */
 +#include <sys/ioctl.h>
@@ -80,11 +71,9 @@ Index: lwip/port/include/arch/cc.h
 +  } while(0)
 +
 +#endif /* LWIP_ARCH_CC_H */
-Index: lwip/port/include/arch/sys_arch.h
-===================================================================
 --- /dev/null
-+++ lwip/port/include/arch/sys_arch.h
-@@ -0,0 +1,61 @@
++++ b/port/include/arch/sys_arch.h
+@@ -0,0 +1,64 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
 + * All rights reserved. 
@@ -122,6 +111,9 @@ Index: lwip/port/include/arch/sys_arch.h
 +#define SYS_MBOX_NULL NULL
 +#define SYS_SEM_NULL  NULL
 +
++/* Return code for an interrupted timed wait */
++#define SYS_ARCH_INTR 0xfffffffeUL
++
 +typedef u32_t sys_prot_t;
 +
 +struct sys_sem;
@@ -146,11 +138,9 @@ Index: lwip/port/include/arch/sys_arch.h
 +
 +#endif /* LWIP_ARCH_SYS_ARCH_H */
 +
-Index: lwip/port/include/lwipopts.h
-===================================================================
 --- /dev/null
-+++ lwip/port/include/lwipopts.h
-@@ -0,0 +1,137 @@
++++ b/port/include/lwipopts.h
+@@ -0,0 +1,131 @@
 +/*
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +   Written by Joan Lledó.
@@ -168,7 +158,7 @@ Index: lwip/port/include/lwipopts.h
 +   General Public License for more details.
 +
 +   You should have received a copy of the GNU General Public License
-+   along with the GNU Hurd.  If not, see <http://www.gnu.org/licenses/>.  */
++   along with the GNU Hurd. If not, see <http://www.gnu.org/licenses/>.  */
 +
 +#ifndef HURD_LWIP_LWIPOPTS_H
 +#define HURD_LWIP_LWIPOPTS_H
@@ -178,12 +168,6 @@ Index: lwip/port/include/lwipopts.h
 +
 +/* Don't rename Sockets API functions */
 +#define LWIP_COMPAT_SOCKETS   0
-+
-+/* Don't limit the number of sockets */
-+#define LWIP_SOCKET_OPEN_COUNT  1
-+
-+/* We're using lwip_poll() */
-+#define LWIP_SOCKET_POLL               1
 +
 +/* Use Glibc malloc()/free() */
 +#define MEM_LIBC_MALLOC   1
@@ -288,11 +272,9 @@ Index: lwip/port/include/lwipopts.h
 +#endif
 +
 +#endif
-Index: lwip/port/sys_arch.c
-===================================================================
 --- /dev/null
-+++ lwip/port/sys_arch.c
-@@ -0,0 +1,741 @@
++++ b/port/sys_arch.c
+@@ -0,0 +1,747 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
 + * All rights reserved. 
@@ -812,6 +794,8 @@ Index: lwip/port/sys_arch.c
 +#endif
 +  if (ret == ETIMEDOUT) {
 +    return SYS_ARCH_TIMEOUT;
++  } else if (ret == EINTR) {
++    return SYS_ARCH_INTR;
 +  }
 +
 +  /* Calculate for how long we waited for the cond. */
@@ -844,12 +828,16 @@ Index: lwip/port/sys_arch.c
 +      if (time_needed == SYS_ARCH_TIMEOUT) {
 +        pthread_mutex_unlock(&(sem->mutex));
 +        return SYS_ARCH_TIMEOUT;
++      } else if(time_needed == SYS_ARCH_INTR) {
++         /* This means we were interrupted, so don't wait again */
++        sem->c++;
++
++        if (sem->c > 1) {
++          sem->c = 1;
++        }
 +      }
-+      /*      pthread_mutex_unlock(&(sem->mutex));
-+              return time_needed; */
 +    } else {
-+      if(cond_wait_intr(&(sem->cond), &(sem->mutex), 0))
-+      {
++      if(cond_wait_intr(&(sem->cond), &(sem->mutex), 0)) {
 +        /* This means we were interrupted, so don't wait again */
 +        sem->c++;
 +

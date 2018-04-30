@@ -1,45 +1,33 @@
-Index: lwip/configure.ac
-===================================================================
+Not intended to be upstream
+
+diff --git a/AUTHORS b/AUTHORS
+new file mode 100644
+index 0000000..8b13789
 --- /dev/null
-+++ lwip/configure.ac
-@@ -0,0 +1,32 @@
-+#   Copyright (C) 2017 Free Software Foundation, Inc.
-+#
-+#   This file is part of the GNU Hurd.
-+#
-+#   The GNU Hurd is free software; you can redistribute it and/or
-+#   modify it under the terms of the GNU General Public License as
-+#   published by the Free Software Foundation; either version 2, or (at
-+#   your option) any later version.
-+#
-+#   The GNU Hurd is distributed in the hope that it will be useful, but
-+#   WITHOUT ANY WARRANTY; without even the implied warranty of
-+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+#   General Public License for more details.
-+#
-+#   You should have received a copy of the GNU General Public License
-+#   along with this program; if not, write to the Free Software
-+#   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
++++ b/AUTHORS
+@@ -0,0 +1 @@
 +
-+AC_INIT([liblwip],[2.0.1], [jlledom@member.fsf.org])
-+AM_INIT_AUTOMAKE([1.15 parallel-tests -Wall -Werror subdir-objects])
-+AM_SILENT_RULES
-+AM_PROG_AR
-+LT_INIT
-+AC_PROG_CC
-+AC_CONFIG_MACRO_DIR([m4])
-+AC_CONFIG_HEADERS([config.h])
-+
-+AC_CONFIG_FILES([
-+	Makefile \
-+	lwip.pc
-+	])
-+AC_OUTPUT
-Index: lwip/Makefile.am
-===================================================================
+diff --git a/ChangeLog b/ChangeLog
+new file mode 100644
+index 0000000..8b13789
 --- /dev/null
-+++ lwip/Makefile.am
-@@ -0,0 +1,155 @@
++++ b/ChangeLog
+@@ -0,0 +1 @@
++
+diff --git a/Filelists.mk b/Filelists.mk
+new file mode 100644
+index 0000000..75435db
+--- /dev/null
++++ b/Filelists.mk
+@@ -0,0 +1,2 @@
++LWIPDIR=src
++include src/Filelists.mk
+diff --git a/Makefile.am b/Makefile.am
+new file mode 100644
+index 0000000..08e6308
+--- /dev/null
++++ b/Makefile.am
+@@ -0,0 +1,164 @@
 +#   Copyright (C) 2017 Free Software Foundation, Inc.
 +#
 +#   This file is part of the GNU Hurd.
@@ -71,10 +59,12 @@ Index: lwip/Makefile.am
 +#ARCHFILES: architecture specific files.
 +ARCHFILES = port/sys_arch.c
 +
-+#ARCHFILES: architecture specific headers.
++#ARCHHEADERS: architecture specific headers.
 +ARCHHEADERS = port/include/arch/cc.h \
 +	port/include/arch/sys_arch.h \
-+	port/include/lwipopts.h
++	port/include/lwipopts.h \
++	port/include/posix/inet.h \
++	port/include/posix/socket.h
 +
 +LWIPFILES = $(LWIPALLFILES) $(ARCHFILES)
 +LWIPHEADERS = $(LWIPALLHEADERS) $(ARCHHEADERS)
@@ -105,7 +95,6 @@ Index: lwip/Makefile.am
 +	$(LWIPDIR)/include/lwip/ethip6.h \
 +	$(LWIPDIR)/include/lwip/icmp.h \
 +	$(LWIPDIR)/include/lwip/icmp6.h \
-+	#$(LWIPDIR)/include/lwip/if_api.h \
 +	$(LWIPDIR)/include/lwip/igmp.h \
 +	$(LWIPDIR)/include/lwip/inet.h \
 +	$(LWIPDIR)/include/lwip/inet_chksum.h \
@@ -117,8 +106,9 @@ Index: lwip/Makefile.am
 +	$(LWIPDIR)/include/lwip/ip6.h \
 +	$(LWIPDIR)/include/lwip/ip6_addr.h \
 +	$(LWIPDIR)/include/lwip/ip6_frag.h \
-+	$(LWIPDIR)/include/lwip/ip6_zone.h \
 +	$(LWIPDIR)/include/lwip/ip_addr.h \
++	$(LWIPDIR)/include/lwip/lwip_inet.h \
++	$(LWIPDIR)/include/lwip/lwip_sockets.h \
 +	$(LWIPDIR)/include/lwip/mem.h \
 +	$(LWIPDIR)/include/lwip/memp.h \
 +	$(LWIPDIR)/include/lwip/mld6.h \
@@ -185,6 +175,13 @@ Index: lwip/Makefile.am
 +	$(PORTDIR)/include/arch/cc.h \
 +	$(PORTDIR)/include/arch/sys_arch.h
 +
++liblwip_la_posix_includedir= \
++	$(includedir)/lwip/posix
++
++liblwip_la_posix_include_HEADERS = \
++	$(PORTDIR)/include/posix/inet.h \
++	$(PORTDIR)/include/posix/socket.h
++
 +liblwip_la_CFLAGS = \
 +	-I$(LWIPDIR)/include \
 +	-I$(PORTDIR)/include \
@@ -195,10 +192,56 @@ Index: lwip/Makefile.am
 +liblwip_la_LIBADD = \
 +	-lpthread
 +
-Index: lwip/lwip.pc.in
-===================================================================
+diff --git a/NEWS b/NEWS
+new file mode 100644
+index 0000000..8b13789
 --- /dev/null
-+++ lwip/lwip.pc.in
++++ b/NEWS
+@@ -0,0 +1 @@
++
+diff --git a/configure.ac b/configure.ac
+new file mode 100644
+index 0000000..b1d5ddf
+--- /dev/null
++++ b/configure.ac
+@@ -0,0 +1,32 @@
++#   Copyright (C) 2017 Free Software Foundation, Inc.
++#
++#   This file is part of the GNU Hurd.
++#
++#   The GNU Hurd is free software; you can redistribute it and/or
++#   modify it under the terms of the GNU General Public License as
++#   published by the Free Software Foundation; either version 2, or (at
++#   your option) any later version.
++#
++#   The GNU Hurd is distributed in the hope that it will be useful, but
++#   WITHOUT ANY WARRANTY; without even the implied warranty of
++#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++#   General Public License for more details.
++#
++#   You should have received a copy of the GNU General Public License
++#   along with this program; if not, write to the Free Software
++#   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
++
++AC_INIT([liblwip],[2.0.1], [jlledom@member.fsf.org])
++AM_INIT_AUTOMAKE([1.15 parallel-tests -Wall -Werror subdir-objects])
++AM_SILENT_RULES
++AM_PROG_AR
++LT_INIT
++AC_PROG_CC
++AC_CONFIG_MACRO_DIR([m4])
++AC_CONFIG_HEADERS([config.h])
++
++AC_CONFIG_FILES([
++	Makefile \
++	lwip.pc
++	])
++AC_OUTPUT
+diff --git a/lwip.pc.in b/lwip.pc.in
+new file mode 100644
+index 0000000..75e6e46
+--- /dev/null
++++ b/lwip.pc.in
 @@ -0,0 +1,10 @@
 +prefix=@prefix@
 +exec_prefix=@exec_prefix@
@@ -210,17 +253,10 @@ Index: lwip/lwip.pc.in
 +Version: @VERSION@
 +Libs: -L${libdir} -llwip
 +Cflags: -I${includedir}
-Index: lwip/Filelists.mk
-===================================================================
---- /dev/null
-+++ lwip/Filelists.mk
-@@ -0,0 +1,2 @@
-+LWIPDIR=src
-+include src/Filelists.mk
-Index: lwip/src/Filelists.mk
-===================================================================
---- lwip.orig/src/Filelists.mk
-+++ lwip/src/Filelists.mk
+diff --git a/src/Filelists.mk b/src/Filelists.mk
+index 86366bb..8c54fbe 100644
+--- a/src/Filelists.mk
++++ b/src/Filelists.mk
 @@ -79,10 +79,10 @@ APIFILES=$(LWIPDIR)/api/api_lib.c \
  
  # NETIFFILES: Files implementing various generic network interface functions
@@ -245,21 +281,3 @@ Index: lwip/src/Filelists.mk
 +	$(CORE6FILES) \
 +	$(APIFILES) \
 +	$(NETIFFILES)
-Index: lwip/AUTHORS
-===================================================================
---- /dev/null
-+++ lwip/AUTHORS
-@@ -0,0 +1 @@
-+
-Index: lwip/ChangeLog
-===================================================================
---- /dev/null
-+++ lwip/ChangeLog
-@@ -0,0 +1 @@
-+
-Index: lwip/NEWS
-===================================================================
---- /dev/null
-+++ lwip/NEWS
-@@ -0,0 +1 @@
-+
