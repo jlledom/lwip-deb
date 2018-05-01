@@ -5,8 +5,8 @@ Build-Depends: debhelper (>= 9), dh-autoreconf
 Standards-Version: 3.9.8
 Section: libs
 Homepage: http://savannah.nongnu.org/projects/lwip/
-Vcs-Git: https://anonscm.debian.org/git/collab-maint/lwip.git
-Vcs-Browser: https://anonscm.debian.org/cgit/collab-maint/lwip.git
+Vcs-Git: https://salsa.debian.org/debian/lwip.git
+Vcs-Browser: https://salsa.debian.org/debian/lwip.git
 
 Package: liblwip-dev
 Section: libdevel
@@ -46,6 +46,7 @@ Description: small implementation of the TCP/IP protocol suite - shared library
 Package: liblwip-doc
 Section: doc
 Architecture: all
+Depends: ${misc:Depends}
 Description: small implementation of the TCP/IP protocol suite - documentation
  lwIP is a small independent implementation of the TCP/IPv4/IPv6 protocol
  suite that has been developed by Adam Dunkels at the Computer and
