@@ -1,3 +1,5 @@
+Already upstream
+
 --- a/src/api/sockets.c
 +++ b/src/api/sockets.c
 @@ -238,6 +238,12 @@
@@ -504,3 +506,15 @@
  /* Use Glibc's sockets headers */
  #define LWIP_STD_SOCKETS  1
  #define LWIP_INCLUDE_STD_SOCKETS  "posix/socket.h"
+--- a/port/include/arch/cc.h
++++ b/port/include/arch/cc.h
+@@ -46,6 +46,9 @@
+ #include <netinet/tcp.h>
+ #include <netinet/udp.h>
+ 
++/* We use poll() instead of select()*/
++#include <poll.h>
++
+ /* Use our own htons() and pals */
+ #define LWIP_DONT_PROVIDE_BYTEORDER_FUNCTIONS 1
+ 

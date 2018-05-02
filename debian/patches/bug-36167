@@ -1,3 +1,5 @@
+Already upstream
+
 diff --git a/src/core/tcp.c b/src/core/tcp.c
 index 7103a52..ccfa3c1 100644
 --- a/src/core/tcp.c

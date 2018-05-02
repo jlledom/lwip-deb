@@ -1,3 +1,5 @@
+Not intended to be upstream
+
 --- /dev/null
 +++ b/port/include/arch/cc.h
 @@ -0,0 +1,68 @@
