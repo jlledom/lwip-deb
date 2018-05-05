@@ -270,7 +270,7 @@ Won't get to upstream
  #endif /* LWIP_HDR_INET_H */
 --- a/src/include/lwip/ip.h
 +++ b/src/include/lwip/ip.h
-@@ -94,9 +94,16 @@ struct ip_pcb {
+@@ -94,9 +94,16 @@
  /*
   * Option flags per-socket. These are the same like SO_XXX in sockets.h
   */
@@ -1497,7 +1497,7 @@ Won't get to upstream
  int lwip_accept(int s, struct sockaddr *addr, socklen_t *addrlen);
  int lwip_bind(int s, const struct sockaddr *name, socklen_t namelen);
  int lwip_shutdown(int s, int how);
-@@ -506,88 +78,16 @@ int lwip_select(int maxfdp1, fd_set *rea
+@@ -506,88 +78,16 @@
  int lwip_ioctl(int s, long cmd, void *argp);
  int lwip_fcntl(int s, int cmd, int val);
  
@@ -1607,24 +1607,9 @@ Won't get to upstream
  /* Use Glibc malloc()/free() */
  #define MEM_LIBC_MALLOC   1
  #define MEMP_MEM_MALLOC   1
---- a/port/include/arch/cc.h
-+++ b/port/include/arch/cc.h
-@@ -40,6 +40,12 @@
- /* Use our own ioctls */
- #include <sys/ioctl.h>
- 
-+/* Use our own <sys/socket.h> */
-+#include <sys/socket.h>
-+#include <netinet/in.h>
-+#include <netinet/tcp.h>
-+#include <netinet/udp.h>
-+
- /* Use our own htons() and pals */
- #define LWIP_DONT_PROVIDE_BYTEORDER_FUNCTIONS 1
- 
 --- a/src/api/netdb.c
 +++ b/src/api/netdb.c
-@@ -374,7 +374,9 @@ lwip_getaddrinfo(const char *nodename, c
+@@ -374,7 +374,9 @@
      /* set up sockaddr */
      inet6_addr_from_ip6addr(&sa6->sin6_addr, ip_2_ip6(&addr));
      sa6->sin6_family = AF_INET6;
@@ -1634,7 +1619,7 @@ Won't get to upstream
      sa6->sin6_port = lwip_htons((u16_t)port_nr);
      ai->ai_family = AF_INET6;
  #endif /* LWIP_IPV6 */
-@@ -384,7 +386,9 @@ lwip_getaddrinfo(const char *nodename, c
+@@ -384,7 +386,9 @@
      /* set up sockaddr */
      inet_addr_from_ip4addr(&sa4->sin_addr, ip_2_ip4(&addr));
      sa4->sin_family = AF_INET;
@@ -1676,7 +1661,7 @@ Won't get to upstream
        (sin6)->sin6_family = AF_INET6; \
        (sin6)->sin6_port = lwip_htons((port)); \
        (sin6)->sin6_flowinfo = 0; \
-@@ -537,9 +547,11 @@ lwip_accept(int s, struct sockaddr *addr
+@@ -537,9 +547,11 @@
      LWIP_ASSERT("addr valid but addrlen NULL", addrlen != NULL);
  
      IPADDR_PORT_TO_SOCKADDR(&tempaddr, &naddr, port);
@@ -1688,7 +1673,7 @@ Won't get to upstream
      MEMCPY(addr, &tempaddr, *addrlen);
  
      LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_accept(%d) returning new sock=%d addr=", s, newsock));
-@@ -878,9 +890,11 @@ lwip_recvfrom(int s, void *mem, size_t l
+@@ -878,9 +890,11 @@
          if (from && fromlen)
  #endif /* SOCKETS_DEBUG */
          {
@@ -1700,7 +1685,7 @@ Won't get to upstream
            MEMCPY(from, &saddr, *fromlen);
          }
        }
-@@ -1764,9 +1778,11 @@ lwip_getaddrname(int s, struct sockaddr
+@@ -1764,9 +1778,11 @@
    ip_addr_debug_print_val(SOCKETS_DEBUG, naddr);
    LWIP_DEBUGF(SOCKETS_DEBUG, (" port=%"U16_F")\n", port));
  
