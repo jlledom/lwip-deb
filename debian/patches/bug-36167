@@ -1,10 +1,8 @@
 Already upstream
 
-diff --git a/src/core/tcp.c b/src/core/tcp.c
-index 7103a52..ccfa3c1 100644
 --- a/src/core/tcp.c
 +++ b/src/core/tcp.c
-@@ -804,7 +804,7 @@ tcp_recved(struct tcp_pcb *pcb, u16_t len)
+@@ -804,7 +804,7 @@
      pcb->rcv_wnd = TCP_WND_MAX(pcb);
    } else if (pcb->rcv_wnd == 0) {
      /* rcv_wnd overflowed */
@@ -13,11 +11,9 @@ index 7103a52..ccfa3c1 100644
        /* In passive close, we allow this, since the FIN bit is added to rcv_wnd
           by the stack itself, since it is not mandatory for an application
           to call tcp_recved() for the FIN bit, but e.g. the netconn API does so. */
-diff --git a/src/include/lwip/tcp.h b/src/include/lwip/tcp.h
-index 3845b9f..fb7fa17 100644
 --- a/src/include/lwip/tcp.h
 +++ b/src/include/lwip/tcp.h
-@@ -424,6 +424,9 @@ const char* tcp_debug_state_str(enum tcp_state s);
+@@ -424,6 +424,9 @@
  /* for compatibility with older implementation */
  #define tcp_new_ip6() tcp_new_ip_type(IPADDR_TYPE_V6)
  

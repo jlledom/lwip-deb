@@ -2,7 +2,7 @@ Already upstream
 
 --- a/src/api/sockets.c
 +++ b/src/api/sockets.c
-@@ -238,6 +238,12 @@
+@@ -248,6 +248,12 @@
    fd_set *writeset;
    /** unimplemented: exceptset passed to select */
    fd_set *exceptset;
@@ -15,7 +15,7 @@ Already upstream
    /** don't signal the same semaphore twice: set to 1 when signalled */
    int sem_signalled;
    /** semaphore to wake up a task waiting for select */
-@@ -1288,6 +1294,51 @@
+@@ -1302,6 +1308,51 @@
    return lwip_sendmsg(s, &msg, 0);
  }
  
@@ -67,7 +67,7 @@ Already upstream
  /**
   * Go through the readset and writeset lists and see which socket of the sockets
   * set in the sets has events. On return, readset, writeset and exceptset have
-@@ -1411,6 +1462,10 @@
+@@ -1425,6 +1476,10 @@
      select_cb.readset = readset;
      select_cb.writeset = writeset;
      select_cb.exceptset = exceptset;
@@ -78,7 +78,7 @@ Already upstream
      select_cb.sem_signalled = 0;
  #if LWIP_NETCONN_SEM_PER_THREAD
      select_cb.sem = LWIP_NETCONN_THREAD_SEM_GET();
-@@ -1422,20 +1477,7 @@
+@@ -1436,20 +1491,7 @@
      }
  #endif /* LWIP_NETCONN_SEM_PER_THREAD */
  
@@ -100,7 +100,7 @@ Already upstream
  
      /* Increase select_waiting for each socket we are interested in */
      maxfdp2 = maxfdp1;
-@@ -1505,21 +1547,7 @@
+@@ -1519,21 +1561,7 @@
          SYS_ARCH_UNPROTECT(lev);
        }
      }
@@ -123,7 +123,7 @@ Already upstream
  
  #if LWIP_NETCONN_SEM_PER_THREAD
      if (select_cb.sem_signalled && (!waited || (waitres == SYS_ARCH_TIMEOUT))) {
-@@ -1563,6 +1591,253 @@
+@@ -1577,6 +1605,253 @@
    return nready;
  }
  
@@ -377,7 +377,7 @@ Already upstream
  /**
   * Callback registered in the netconn layer for each socket-netconn.
   * Processes recvevent (data available) and wakes up tasks waiting for select.
-@@ -1649,20 +1924,27 @@
+@@ -1663,20 +1938,27 @@
      if (scb->sem_signalled == 0) {
        /* semaphore not signalled yet */
        int do_signal = 0;
@@ -439,7 +439,7 @@ Already upstream
   * names (read, write & close). (only used if you use sockets.c)
 --- a/src/include/lwip/lwip_sockets.h
 +++ b/src/include/lwip/lwip_sockets.h
-@@ -430,6 +430,21 @@
+@@ -432,6 +432,21 @@
  #error "external FD_SETSIZE too small for number of sockets"
  #endif /* FD_SET */
  
@@ -461,7 +461,7 @@ Already upstream
  /** LWIP_TIMEVAL_PRIVATE: if you want to use the struct timeval provided
   * by your system, set this to 0 and include <sys/time.h> in cc.h */
  #ifndef LWIP_TIMEVAL_PRIVATE
-@@ -466,6 +481,9 @@
+@@ -468,6 +483,9 @@
  #define lwip_sendto       sendto
  #define lwip_socket       socket
  #define lwip_select       select
@@ -471,7 +471,7 @@ Already upstream
  #define lwip_ioctlsocket  ioctl
  
  #if LWIP_POSIX_SOCKETS_IO_NAMES
-@@ -516,6 +534,10 @@
+@@ -518,6 +536,10 @@
  #define socket(domain,type,protocol)              lwip_socket(domain,type,protocol)
  /** @ingroup socket */
  #define select(maxfdp1,readset,writeset,exceptset,timeout)     lwip_select(maxfdp1,readset,writeset,exceptset,timeout)
@@ -508,9 +508,9 @@ Already upstream
  #define LWIP_INCLUDE_STD_SOCKETS  "posix/socket.h"
 --- a/port/include/arch/cc.h
 +++ b/port/include/arch/cc.h
-@@ -46,6 +46,9 @@
- #include <netinet/tcp.h>
- #include <netinet/udp.h>
+@@ -40,6 +40,9 @@
+ /* Use our own ioctls */
+ #include <sys/ioctl.h>
  
 +/* We use poll() instead of select()*/
 +#include <poll.h>
