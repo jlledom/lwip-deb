@@ -73,7 +73,7 @@ Not intended to be upstream
 +#endif /* LWIP_ARCH_CC_H */
 --- /dev/null
 +++ b/port/include/arch/sys_arch.h
-@@ -0,0 +1,64 @@
+@@ -0,0 +1,62 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
 + * All rights reserved. 
@@ -133,8 +133,6 @@ Not intended to be upstream
 +
 +struct sys_thread;
 +typedef struct sys_thread * sys_thread_t;
-+
-+u32_t sys_arch_sem_wait_intr(sys_sem_t *sem, u32_t timeout);
 +
 +#endif /* LWIP_ARCH_SYS_ARCH_H */
 +
@@ -274,7 +272,7 @@ Not intended to be upstream
 +#endif
 --- /dev/null
 +++ b/port/sys_arch.c
-@@ -0,0 +1,747 @@
+@@ -0,0 +1,674 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
 + * All rights reserved. 
@@ -406,9 +404,6 @@ Not intended to be upstream
 +static void sys_sem_free_internal(struct sys_sem *sem);
 +
 +static u32_t cond_wait(pthread_cond_t * cond, pthread_mutex_t * mutex,
-+                       u32_t timeout);
-+
-+static u32_t cond_wait_intr(pthread_cond_t * cond, pthread_mutex_t * mutex,
 +                       u32_t timeout);
 +
 +/*-----------------------------------------------------------------------------------*/
@@ -686,82 +681,12 @@ Not intended to be upstream
 +  return ERR_OK;
 +}
 +
-+static u32_t
-+cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex, u32_t timeout)
-+{
-+  struct timespec rtime1, rtime2, ts;
-+  int ret;
-+
-+  if (timeout == 0) {
-+    pthread_cond_wait(cond, mutex);
-+    return 0;
-+  }
-+
-+  /* Get a timestamp and add the timeout value. */
-+  get_monotonic_time(&rtime1);
-+#if defined(LWIP_UNIX_MACH) || (defined(LWIP_UNIX_ANDROID) && __ANDROID_API__ < 21)
-+  ts.tv_sec = timeout / 1000L;
-+  ts.tv_nsec = (timeout % 1000L) * 1000000L;
-+  ret = pthread_cond_timedwait_relative_np(cond, mutex, &ts);
-+#else
-+  ts.tv_sec = rtime1.tv_sec + timeout / 1000L;
-+  ts.tv_nsec = rtime1.tv_nsec + (timeout % 1000L) * 1000000L;
-+  if (ts.tv_nsec >= 1000000000L) {
-+    ts.tv_sec++;
-+    ts.tv_nsec -= 1000000000L;
-+  }
-+
-+  ret = pthread_cond_timedwait(cond, mutex, &ts);
-+#endif
-+  if (ret == ETIMEDOUT) {
-+    return SYS_ARCH_TIMEOUT;
-+  }
-+
-+  /* Calculate for how long we waited for the cond. */
-+  get_monotonic_time(&rtime2);
-+  ts.tv_sec = rtime2.tv_sec - rtime1.tv_sec;
-+  ts.tv_nsec = rtime2.tv_nsec - rtime1.tv_nsec;
-+  if (ts.tv_nsec < 0) {
-+    ts.tv_sec--;
-+    ts.tv_nsec += 1000000000L;
-+  }
-+  return (u32_t)(ts.tv_sec * 1000L + ts.tv_nsec / 1000000L);
-+}
-+
-+u32_t
-+sys_arch_sem_wait(struct sys_sem **s, u32_t timeout)
-+{
-+  u32_t time_needed = 0;
-+  struct sys_sem *sem;
-+  LWIP_ASSERT("invalid sem", (s != NULL) && (*s != NULL));
-+  sem = *s;
-+
-+  pthread_mutex_lock(&(sem->mutex));
-+  while (sem->c <= 0) {
-+    if (timeout > 0) {
-+      time_needed = cond_wait(&(sem->cond), &(sem->mutex), timeout);
-+
-+      if (time_needed == SYS_ARCH_TIMEOUT) {
-+        pthread_mutex_unlock(&(sem->mutex));
-+        return SYS_ARCH_TIMEOUT;
-+      }
-+      /*      pthread_mutex_unlock(&(sem->mutex));
-+              return time_needed; */
-+    } else {
-+      cond_wait(&(sem->cond), &(sem->mutex), 0);
-+    }
-+  }
-+  sem->c--;
-+  pthread_mutex_unlock(&(sem->mutex));
-+  return (u32_t)time_needed;
-+}
-+
 +/*
 + * Like cond_wait(), but it calls Hurd's non portable
 + * functions to receive cancellation requests
 + */
 +static u32_t
-+cond_wait_intr(pthread_cond_t *cond, pthread_mutex_t *mutex, u32_t timeout)
++cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex, u32_t timeout)
 +{
 +  struct timespec rtime1, rtime2, ts;
 +  int ret;
@@ -813,7 +738,7 @@ Not intended to be upstream
 + * Like sys_arch_sem_wait(), but it handles thread cancellations.
 + */
 +u32_t
-+sys_arch_sem_wait_intr(struct sys_sem **s, u32_t timeout)
++sys_arch_sem_wait(struct sys_sem **s, u32_t timeout)
 +{
 +  u32_t time_needed = 0;
 +  struct sys_sem *sem;
@@ -823,7 +748,7 @@ Not intended to be upstream
 +  pthread_mutex_lock(&(sem->mutex));
 +  while (sem->c <= 0) {
 +    if (timeout > 0) {
-+      time_needed = cond_wait_intr(&(sem->cond), &(sem->mutex), timeout);
++      time_needed = cond_wait(&(sem->cond), &(sem->mutex), timeout);
 +
 +      if (time_needed == SYS_ARCH_TIMEOUT) {
 +        pthread_mutex_unlock(&(sem->mutex));
@@ -837,7 +762,7 @@ Not intended to be upstream
 +        }
 +      }
 +    } else {
-+      if(cond_wait_intr(&(sem->cond), &(sem->mutex), 0)) {
++      if(cond_wait(&(sem->cond), &(sem->mutex), 0)) {
 +        /* This means we were interrupted, so don't wait again */
 +        sem->c++;
 +
