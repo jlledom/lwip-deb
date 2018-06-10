@@ -27,7 +27,7 @@ new file mode 100644
 index 0000000..08e6308
 --- /dev/null
 +++ b/Makefile.am
-@@ -0,0 +1,164 @@
+@@ -0,0 +1,163 @@
 +#   Copyright (C) 2017 Free Software Foundation, Inc.
 +#
 +#   This file is part of the GNU Hurd.
@@ -137,7 +137,6 @@ index 0000000..08e6308
 +	$(LWIPDIR)/include/lwip/priv/memp_priv.h \
 +	$(LWIPDIR)/include/lwip/priv/memp_std.h \
 +	$(LWIPDIR)/include/lwip/priv/nd6_priv.h \
-+	#$(LWIPDIR)/include/lwip/priv/sockets_priv.h \
 +	$(LWIPDIR)/include/lwip/priv/tcp_priv.h \
 +	$(LWIPDIR)/include/lwip/priv/tcpip_priv.h
 +
