@@ -60,7 +60,7 @@ Won't get to upstream
  /** The global list of tasks waiting for select */
  static struct lwip_select_cb *select_cb_list;
  /** This counter is increased from lwip_select when the list is changed
-@@ -369,15 +380,26 @@
+@@ -369,15 +380,29 @@
  
    s -= LWIP_SOCKET_OFFSET;
  
@@ -76,10 +76,13 @@ Won't get to upstream
    }
  
 +#if LWIP_SOCKET_OPEN_COUNT
++  SYS_ARCH_DECL_PROTECT(lev);
++  SYS_ARCH_PROTECT(lev);
 +  for(sock = sockets; sock != NULL; sock = sock->next) {
 +    if(sock->count == s)
 +      break;
 +  }
++  SYS_ARCH_UNPROTECT(lev);
 +#else /* LWIP_SOCKET_OPEN_COUNT */
    sock = &sockets[s];
 +#endif /* LWIP_SOCKET_OPEN_COUNT */
@@ -89,9 +92,14 @@ Won't get to upstream
      LWIP_DEBUGF(SOCKETS_DEBUG, ("get_socket(%d): not active\n", s + LWIP_SOCKET_OFFSET));
      set_errno(EBADF);
      return NULL;
-@@ -396,13 +418,26 @@
+@@ -395,14 +420,33 @@
+ static struct lwip_sock *
  tryget_socket(int s)
  {
++#if LWIP_SOCKET_OPEN_COUNT
++  struct lwip_sock *sock;
++#endif /* LWIP_SOCKET_OPEN_COUNT */
++
    s -= LWIP_SOCKET_OFFSET;
 -  if ((s < 0) || (s >= NUM_SOCKETS)) {
 +  if ((s < 0)
@@ -102,11 +110,13 @@ Won't get to upstream
      return NULL;
    }
 +#if LWIP_SOCKET_OPEN_COUNT
-+  struct lwip_sock *sock;
++  SYS_ARCH_DECL_PROTECT(lev);
++  SYS_ARCH_PROTECT(lev);
 +  for(sock = sockets; sock != NULL; sock = sock->next) {
 +    if(sock->count == s)
 +      break;
 +  }
++  SYS_ARCH_UNPROTECT(lev);
 +  return sock;
 +#else /* LWIP_SOCKET_OPEN_COUNT */
    if (!sockets[s].conn) {
@@ -117,7 +127,7 @@ Won't get to upstream
  }
  
  /**
-@@ -417,30 +452,70 @@
+@@ -417,30 +461,70 @@
  alloc_socket(struct netconn *newconn, int accepted)
  {
    int i;
@@ -199,33 +209,34 @@ Won't get to upstream
  }
  
  /** Free a socket. The socket's netconn must have been
-@@ -452,9 +527,14 @@
- static void
+@@ -453,6 +537,9 @@
  free_socket(struct lwip_sock *sock, int is_tcp)
  {
--  void *lastdata;
--
--  lastdata         = sock->lastdata;
-+  void *lastdata = sock->lastdata;
+   void *lastdata;
 +#if LWIP_SOCKET_OPEN_COUNT
 +  struct lwip_sock **it = &sockets;
-+
++#endif /* LWIP_SOCKET_OPEN_COUNT */
+ 
+   lastdata         = sock->lastdata;
+   sock->lastdata   = NULL;
+@@ -460,7 +547,15 @@
+   sock->err        = 0;
+ 
+   /* Protect socket array */
+-  SYS_ARCH_SET(sock->conn, NULL);
++  SYS_ARCH_DECL_PROTECT(lev);
++  SYS_ARCH_PROTECT(lev);
++  sock->conn       = NULL;
++#if LWIP_SOCKET_OPEN_COUNT
 +  while(*it != sock) it = &(*it)->next;
 +  *it = (*it)->next;
 +  mem_free(sock);
-+#else /* LWIP_SOCKET_OPEN_COUNT */
-   sock->lastdata   = NULL;
-   sock->lastoffset = 0;
-   sock->err        = 0;
-@@ -462,6 +542,7 @@
-   /* Protect socket array */
-   SYS_ARCH_SET(sock->conn, NULL);
-   /* don't use 'sock' after this line, as another task might have allocated it */
 +#endif /* LWIP_SOCKET_OPEN_COUNT */
++  SYS_ARCH_UNPROTECT(lev);
+   /* don't use 'sock' after this line, as another task might have allocated it */
  
    if (lastdata != NULL) {
-     if (is_tcp) {
-@@ -522,7 +603,9 @@
+@@ -522,7 +617,9 @@
      sock_set_errno(sock, ENFILE);
      return -1;
    }
