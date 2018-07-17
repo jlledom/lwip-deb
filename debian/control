@@ -46,6 +46,7 @@ Description: small implementation of the TCP/IP protocol suite - shared library
 Package: liblwip-doc
 Section: doc
 Architecture: all
+Multi-Arch: foreign
 Depends: ${misc:Depends}
 Description: small implementation of the TCP/IP protocol suite - documentation
  lwIP is a small independent implementation of the TCP/IPv4/IPv6 protocol
