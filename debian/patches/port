@@ -272,7 +272,7 @@ Not intended to be upstream
 +#endif
 --- /dev/null
 +++ b/port/sys_arch.c
-@@ -0,0 +1,674 @@
+@@ -0,0 +1,668 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
 + * All rights reserved. 
@@ -754,21 +754,15 @@ Not intended to be upstream
 +        pthread_mutex_unlock(&(sem->mutex));
 +        return SYS_ARCH_TIMEOUT;
 +      } else if(time_needed == SYS_ARCH_INTR) {
-+         /* This means we were interrupted, so don't wait again */
-+        sem->c++;
-+
-+        if (sem->c > 1) {
-+          sem->c = 1;
-+        }
++        /* This means we were interrupted */
++        pthread_mutex_unlock(&(sem->mutex));
++        return SYS_ARCH_INTR;
 +      }
 +    } else {
 +      if(cond_wait(&(sem->cond), &(sem->mutex), 0)) {
-+        /* This means we were interrupted, so don't wait again */
-+        sem->c++;
-+
-+        if (sem->c > 1) {
-+          sem->c = 1;
-+        }
++        /* This means we were interrupted */
++        pthread_mutex_unlock(&(sem->mutex));
++        return SYS_ARCH_INTR;
 +      }
 +    }
 +  }
