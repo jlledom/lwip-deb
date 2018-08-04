@@ -1,6 +1,11 @@
 lwip (2.0.3-3) UNRELEASED; urgency=medium
 
+  [ Samuel Thibault ]
   * Mark liblwip-doc Multi-Arch: foreign.
+
+  [ Joan Lledó ]
+  * Update patches: Fixing interruptibility and thread safety. Convert to DOS
+    format to mach lwip sources.
 
  -- Samuel Thibault <sthibault@debian.org>  Tue, 17 Jul 2018 10:03:58 +0200
 
