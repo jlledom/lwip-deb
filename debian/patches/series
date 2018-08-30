@@ -3,5 +3,6 @@ posix
 errno
 autoconf
 bug-36167
+getpeername_dual
 poll
 max_sockets

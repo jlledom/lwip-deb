@@ -6,6 +6,7 @@ lwip (2.0.3-3) UNRELEASED; urgency=medium
   [ Joan Lledó ]
   * Update patches: Fixing interruptibility and thread safety. Convert to DOS
     format to mach lwip sources.
+  * getpeername_dual: Cherry-pick upstream fix for dual-stack sockets.
 
  -- Samuel Thibault <sthibault@debian.org>  Tue, 17 Jul 2018 10:03:58 +0200
 
