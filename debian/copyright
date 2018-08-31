@@ -736,7 +736,8 @@ License: GPL
  Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
 
 Files: debian/*
-Copyright: 2017 Samuel Thibault <sthibault@debian.org>
+Copyright: 2017-2018 Samuel Thibault <sthibault@debian.org>,
+           2017-2018 Joan Lledó <joanlluislledo@gmail.com>
 License: GPL-2+
  This package is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by

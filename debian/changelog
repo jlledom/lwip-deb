@@ -1,5 +1,23 @@
+lwip (2.0.3-3) UNRELEASED; urgency=medium
+
+  [ Samuel Thibault ]
+  * Mark liblwip-doc Multi-Arch: foreign.
+
+  [ Joan Lledó ]
+  * Update patches: Fixing interruptibility and thread safety. Convert to DOS
+    format to mach lwip sources.
+  * getpeername_dual: Cherry-pick upstream fix for dual-stack sockets.
+
+ -- Samuel Thibault <sthibault@debian.org>  Tue, 17 Jul 2018 10:03:58 +0200
+
+lwip (2.0.3-2) unstable; urgency=medium
+
+  * Fix shipping lwip/priv/{tcp,tcpip}_priv.h.
+
+ -- Samuel Thibault <sthibault@debian.org>  Mon, 11 Jun 2018 00:47:22 +0200
+
 lwip (2.0.3-1) unstable; urgency=medium
 
   * Initial release (Closes: Bug#884641)
 
- -- Samuel Thibault <sthibault@debian.org>  Sun, 17 Dec 2017 23:18:45 +0000
+ -- Samuel Thibault <sthibault@debian.org>  Tue, 01 May 2018 01:52:18 +0200
