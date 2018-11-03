@@ -2,6 +2,7 @@ lwip (2.0.3-3) unstable; urgency=medium
 
   [ Samuel Thibault ]
   * Mark liblwip-doc Multi-Arch: foreign.
+  * copyright: Make some licence names more precise.
 
   [ Joan Lledó ]
   * Update patches: Fixing interruptibility and thread safety. Convert to DOS
