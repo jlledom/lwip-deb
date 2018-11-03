@@ -1,4 +1,4 @@
-lwip (2.0.3-3) UNRELEASED; urgency=medium
+lwip (2.0.3-3) unstable; urgency=medium
 
   [ Samuel Thibault ]
   * Mark liblwip-doc Multi-Arch: foreign.
@@ -8,7 +8,7 @@ lwip (2.0.3-3) UNRELEASED; urgency=medium
     format to mach lwip sources.
   * getpeername_dual: Cherry-pick upstream fix for dual-stack sockets.
 
- -- Samuel Thibault <sthibault@debian.org>  Tue, 17 Jul 2018 10:03:58 +0200
+ -- Samuel Thibault <sthibault@debian.org>  Sun, 04 Nov 2018 00:25:58 +0100
 
 lwip (2.0.3-2) unstable; urgency=medium
 
