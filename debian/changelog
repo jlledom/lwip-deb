@@ -17,6 +17,9 @@ lwip (2.1.2-1) experimental; urgency=medium
   * debian/patches/series: List of patches updated.
   * debian/patches/rules: Adapted to use cmake.
 
+  [ Samuel Thibault ]
+  * control: Add cmake build-dep.
+
  -- Samuel Thibault <sthibault@debian.org>  Sun, 31 Mar 2019 20:36:34 +0200
 
 lwip (2.0.3-3) unstable; urgency=medium
