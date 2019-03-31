@@ -2,6 +2,20 @@ lwip (2.1.2-1) UNRELEASED; urgency=medium
 
   [ Joan Lledó ]
   * New upstream release.
+  * debian/patches/autoconf: Removed, replaced by cmake.
+  * debian/patches/bug-36167: Removed, already upstream.
+  * debian/patches/errno: Likewise.
+  * debian/patches/getpeername_dual: Likewise.
+  * debian/patches/poll: Likewise.
+  * debian/patches/posix: Removed, merged into port patch.
+  * debian/patches/cmake: New patch, implements cmake build system.
+  * debian/patches/max_sockets: Adapted to 2.1.2.
+  * debian/patches/patch9350: Cherry-picked from upstream.
+  	* It allows using external socket headers.
+  * debian/patches/port: Adapted to 2.1.2.
+  	* It now includes external socket headers.
+  * debian/patches/series: List of patches updated.
+  * debian/patches/rules: Adapted to use cmake.
 
  -- Samuel Thibault <sthibault@debian.org>  Sun, 31 Mar 2019 20:36:34 +0200
 

@@ -1,8 +1,4 @@
+patch9350 --binary
 port
-posix
-errno
-autoconf
-bug-36167
-getpeername_dual
-poll
 max_sockets
+cmake
