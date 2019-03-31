@@ -1,4 +1,4 @@
-lwip (2.1.2-1) UNRELEASED; urgency=medium
+lwip (2.1.2-1) experimental; urgency=medium
 
   [ Joan Lledó ]
   * New upstream release.
