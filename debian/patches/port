@@ -157,7 +157,7 @@ Not intended to be upstream
 +
 --- /dev/null
 +++ b/port/include/lwipopts.h
-@@ -0,0 +1,160 @@
+@@ -0,0 +1,163 @@
 +/*
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +   Written by Joan Lledó.
@@ -263,6 +263,9 @@ Not intended to be upstream
 +#define LWIP_IPV6             1
 +#define LWIP_ICMP6            1
 +#define LWIP_IPV6_MLD         1
++
++/* Don't abort the whole stack when an error is detected */
++#define LWIP_NOASSERT_ON_ERROR   1
 +
 +/* Threading options */
 +#define LWIP_TCPIP_CORE_LOCKING   1
