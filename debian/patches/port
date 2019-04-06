@@ -323,7 +323,7 @@ Not intended to be upstream
 +#endif
 --- /dev/null
 +++ b/port/sys_arch.c
-@@ -0,0 +1,722 @@
+@@ -0,0 +1,723 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
 + * All rights reserved. 
@@ -866,6 +866,7 @@ Not intended to be upstream
 +    } else {
 +      cond_wait(&(sem->cond), &(sem->mutex), 0);
 +#ifdef LWIP_UNIX_HURD
++      pthread_mutex_unlock(&(sem->mutex));
 +      return 0;
 +#endif
 +    }
