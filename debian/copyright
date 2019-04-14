@@ -29,7 +29,7 @@ Copyright: 1984-2000 Carnegie Mellon University.
 	   2015 Dirk Ziegelmeier
 	   2016 Erik Andersson
 	   2016 Elias Oenal.
-License: BSD
+License: BSD-3-Clause
  Redistribution and use in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
  .
@@ -149,7 +149,7 @@ License: BSD
 
 Files: src/include/netif/ppp/chap_ms.h src/include/netif/ppp/chap_ms.c src/netif/ppp/pppcrypt.c src/include/netif/ppp/pppcrypt.h
 Copyright: 1995 Eric Rosenquist.
-License: BSD
+License: BSD-3-Clause
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
  are met:
@@ -245,7 +245,7 @@ License: BSD
 Files: src/include/netif/ppp/ecp.h
 Copyright: 2002 Google, Inc.
            1994-2002 Paul Mackerras. All rights reserved.
-License: BSD
+License: BSD-3-Clause
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
  are met:
@@ -272,7 +272,7 @@ License: BSD
 
 Files: src/netif/ppp/eui64.c src/include/netif/ppp/eui64.h
 Copyright: 1999 Tommi Komulainen.
-License: BSD
+License: BSD-4-Clause
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
  are met:
@@ -304,7 +304,7 @@ License: BSD
 
 Files: src/netif/ppp/fsm.c src/include/netif/ppp/fsm.h src/netif/ppp/ipcp.c src/include/netif/ppp/ipcp.h src/netif/ppp/lcp.c src/include/netif/ppp/lcp.h src/netif/ppp/upap.c src/include/netif/ppp/upap.h
 Copyright: 1984-2000 Carnegie Mellon University.
-License: BSD
+License: BSD-4-Clause
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
  are met:
@@ -345,7 +345,7 @@ Files: src/netif/ppp/ipv6cp.c src/include/netif/ppp/ipv6cp.h
 Copyright: 1999 Tommi Komulainen.
            1995-1999 Francis.Dupont@inria.fr, INRIA Rocquencourt, Alain.Durand@imag.fr, IMAG, Jean-Luc.Richier@imag.fr, IMAG-LSR.
            1984-2000 Carnegie Mellon University. All rights reserved.
-License: BSD
+License: BSD-4-Clause
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
  are met:
@@ -473,7 +473,7 @@ Files: src/netif/ppp/magic.c src/include/netif/ppp/magic.h
 Copyright: 1984-2000 Carnegie Mellon University. All rights reserved.
            2003 by Marc Boucher, Services Informatiques (MBSI) inc.
 	   1998 by Global Election Systems Inc.
-License: BSD
+License: BSD-4-Clause
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
  are met:
@@ -530,7 +530,7 @@ License: BSD
 
 Files: src/netif/ppp/mppe.c
 Copyright: 2002,2003,2004 Google, Inc.
-License: BSD
+License: ISC
  Permission to use, copy, modify, and distribute this software and its
  documentation is hereby granted, provided that the above copyright
  notice appears in all copies.  This software is provided without any
@@ -538,7 +538,7 @@ License: BSD
 
 Files: src/include/netif/ppp/mppe.h
 Copyright: 2008 Paul Mackerras.
-License: BSD
+License: BSD-4-Clause
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
  are met:

@@ -1,14 +1,39 @@
-lwip (2.0.3-3) UNRELEASED; urgency=medium
+lwip (2.1.2-1) experimental; urgency=medium
+
+  [ Joan Lledó ]
+  * New upstream release.
+  * debian/patches/autoconf: Removed, replaced by cmake.
+  * debian/patches/bug-36167: Removed, already upstream.
+  * debian/patches/errno: Likewise.
+  * debian/patches/getpeername_dual: Likewise.
+  * debian/patches/poll: Likewise.
+  * debian/patches/posix: Removed, merged into port patch.
+  * debian/patches/cmake: New patch, implements cmake build system.
+  * debian/patches/max_sockets: Adapted to 2.1.2.
+  * debian/patches/patch9350: Cherry-picked from upstream.
+  	* It allows using external socket headers.
+  * debian/patches/port: Adapted to 2.1.2.
+  	* It now includes external socket headers.
+  * debian/patches/series: List of patches updated.
+  * debian/patches/rules: Adapted to use cmake.
+
+  [ Samuel Thibault ]
+  * control: Add cmake build-dep.
+
+ -- Samuel Thibault <sthibault@debian.org>  Sun, 31 Mar 2019 20:36:34 +0200
+
+lwip (2.0.3-3) unstable; urgency=medium
 
   [ Samuel Thibault ]
   * Mark liblwip-doc Multi-Arch: foreign.
+  * copyright: Make some licence names more precise.
 
   [ Joan Lledó ]
   * Update patches: Fixing interruptibility and thread safety. Convert to DOS
     format to mach lwip sources.
   * getpeername_dual: Cherry-pick upstream fix for dual-stack sockets.
 
- -- Samuel Thibault <sthibault@debian.org>  Tue, 17 Jul 2018 10:03:58 +0200
+ -- Samuel Thibault <sthibault@debian.org>  Sun, 04 Nov 2018 00:25:58 +0100
 
 lwip (2.0.3-2) unstable; urgency=medium
 
