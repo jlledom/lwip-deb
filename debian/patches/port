@@ -91,7 +91,7 @@ Not intended to be upstream
 +#endif /* LWIP_ARCH_CC_H */
 --- /dev/null
 +++ b/port/include/arch/sys_arch.h
-@@ -0,0 +1,63 @@
+@@ -0,0 +1,66 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
 + * All rights reserved. 
@@ -128,6 +128,9 @@ Not intended to be upstream
 +
 +#define SYS_MBOX_NULL NULL
 +#define SYS_SEM_NULL  NULL
++
++/* Return code for an interrupted timed wait */
++#define SYS_ARCH_INTR 0xfffffffeUL
 +
 +/*typedef u32_t sys_prot_t;*/
 +
@@ -323,7 +326,7 @@ Not intended to be upstream
 +#endif
 --- /dev/null
 +++ b/port/sys_arch.c
-@@ -0,0 +1,723 @@
+@@ -0,0 +1,739 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
 + * All rights reserved. 
@@ -809,8 +812,14 @@ Not intended to be upstream
 +#endif
 +
 +  if (timeout == 0) {
-+    pthread_cond_wait(cond, mutex);
-+    return 0;
++    ret = pthread_cond_wait(cond, mutex);
++    return
++#ifdef LWIP_UNIX_HURD
++    /* On the Hurd, ret == 1 means the RPC has been cancelled.
++     * The thread is awakened (not terminated) and execution must continue */
++    ret == 1 ? SYS_ARCH_INTR :
++#endif
++    (u32_t)ret;
 +  }
 +
 +  /* Get a timestamp and add the timeout value. */
@@ -831,6 +840,12 @@ Not intended to be upstream
 +#endif
 +  if (ret == ETIMEDOUT) {
 +    return SYS_ARCH_TIMEOUT;
++#ifdef LWIP_UNIX_HURD
++    /* On the Hurd, ret == 1 means the RPC has been cancelled.
++     * The thread is awakened (not terminated) and execution must continue */
++  } else if (ret == 1) {
++    return SYS_ARCH_INTR;
++#endif
 +  }
 +
 +  /* Calculate for how long we waited for the cond. */
@@ -849,6 +864,7 @@ Not intended to be upstream
 +{
 +  u32_t time_needed = 0;
 +  struct sys_sem *sem;
++  u32_t ret;
 +  LWIP_ASSERT("invalid sem", (s != NULL) && (*s != NULL));
 +  sem = *s;
 +
@@ -860,15 +876,18 @@ Not intended to be upstream
 +      if (time_needed == SYS_ARCH_TIMEOUT) {
 +        pthread_mutex_unlock(&(sem->mutex));
 +        return SYS_ARCH_TIMEOUT;
++#ifdef LWIP_UNIX_HURD
++      } else if(time_needed == SYS_ARCH_INTR) {
++        pthread_mutex_unlock(&(sem->mutex));
++        return SYS_ARCH_INTR;
++#endif
 +      }
 +      /*      pthread_mutex_unlock(&(sem->mutex));
 +              return time_needed; */
-+    } else {
-+      cond_wait(&(sem->cond), &(sem->mutex), 0);
-+#ifdef LWIP_UNIX_HURD
++    } else if((ret = cond_wait(&(sem->cond), &(sem->mutex), 0))) {
++      /* Some error happened or the thread has been awakened but not by lwip */
 +      pthread_mutex_unlock(&(sem->mutex));
-+      return 0;
-+#endif
++      return ret;
 +    }
 +  }
 +  sem->c--;
