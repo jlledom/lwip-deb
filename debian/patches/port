@@ -180,8 +180,8 @@ Not intended to be upstream
 +   You should have received a copy of the GNU General Public License
 +   along with the GNU Hurd. If not, see <http://www.gnu.org/licenses/>.  */
 +
-+#ifndef HURD_LWIP_LWIPOPTS_H
-+#define HURD_LWIP_LWIPOPTS_H
++#ifndef UNIX_LWIP_LWIPOPTS_H
++#define UNIX_LWIP_LWIPOPTS_H
 +
 +/* An OS is present */
 +#define NO_SYS    0
@@ -323,7 +323,7 @@ Not intended to be upstream
 +#define IP6_DEBUG         LWIP_DBG_OFF
 +#endif
 +
-+#endif
++#endif /* UNIX_LWIP_LWIPOPTS_H */
 --- /dev/null
 +++ b/port/sys_arch.c
 @@ -0,0 +1,739 @@
@@ -1068,7 +1068,7 @@ Not intended to be upstream
 +#endif /* SYS_LIGHTWEIGHT_PROT */
 --- /dev/null
 +++ b/port/Filelists.cmake
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,22 @@
 +# This file is indended to be included in end-user CMakeLists.txt
 +# include(/path/to/Filelists.cmake)
 +# It assumes the variable LWIP_DIR is defined pointing to the
@@ -1085,6 +1085,11 @@ Not intended to be upstream
 +
 +set(lwipportunix_SRCS
 +    ${LWIP_DIR}/port/sys_arch.c
++    ${LWIP_DIR}/port/netif/fifo.c
++    ${LWIP_DIR}/port/netif/list.c
++    ${LWIP_DIR}/port/netif/pcapif.c
++    ${LWIP_DIR}/port/netif/sio.c
++    ${LWIP_DIR}/port/netif/tapif.c
 +)
 --- /dev/null
 +++ b/port/include/posix/inet.h
@@ -1399,3 +1404,1675 @@ Not intended to be upstream
    }
    MEMCPY(name, &saddr, *namelen);
  
+--- /dev/null
++++ b/port/include/netif/fifo.h
+@@ -0,0 +1,54 @@
++#ifndef FIFO_H
++#define FIFO_H
++
++#include "lwip/sys.h"
++
++/** How many bytes in fifo */
++#define FIFOSIZE 2048
++
++/** fifo data structure, this one is passed to all fifo functions */
++typedef struct fifo_t {
++  u8_t data[FIFOSIZE+10]; /* data segment, +10 is a hack probably not needed.. FIXME! */
++  int dataslot;			  /* index to next char to be read */
++  int emptyslot;		  /* index to next empty slot */
++  int len;				  /* len probably not needed, may be calculated from dataslot and emptyslot in conjunction with FIFOSIZE */
++
++  sys_sem_t sem;		/* semaphore protecting simultaneous data manipulation */
++  sys_sem_t getSem;		/* sepaphore used to signal new data if getWaiting is set */
++  u8_t getWaiting;		/* flag used to indicate that fifoget is waiting for data. fifoput is suposed to clear */
++  						/* this flag prior to signaling the getSem semaphore */
++} fifo_t;
++
++
++/**
++*   Get a character from fifo
++*   Blocking call.
++*	@param 	fifo pointer to fifo data structure
++*	@return	character read from fifo
++*/
++u8_t fifoGet(fifo_t * fifo);
++
++/**
++*   Get a character from fifo
++*   Non blocking call.
++*	@param 	fifo pointer to fifo data structure
++*	@return	character read from fifo, or < zero if non was available
++*/
++s16_t fifoGetNonBlock(fifo_t * fifo);
++
++/**
++*	fifoput is called by the signalhandler when new data has arrived (or some other event is indicated)
++*   fifoput reads directly from the serialport and is thus highly dependent on unix arch at this moment
++*	@param 	fifo pointer to fifo data structure
++*	@param	fd	unix file descriptor
++*/
++void fifoPut(fifo_t * fifo, int fd);
++
++/**
++*   fifoinit initiate fifo
++*	@param 	fifo	pointer to fifo data structure, allocated by the user
++*/
++void fifoInit(fifo_t * fifo);
++
++#endif
++
+--- /dev/null
++++ b/port/include/netif/list.h
+@@ -0,0 +1,26 @@
++
++#ifndef LWIP_LIST_H
++#define LWIP_LIST_H
++
++struct elem;
++
++struct list {
++  struct elem *first, *last;
++  int size, elems;
++};
++
++struct elem {
++  struct elem *next;
++  void *data;
++};
++
++struct list *list_new(int size);
++int list_push(struct list *list, void *data);
++void *list_pop(struct list *list);
++void *list_first(struct list *list);
++int list_elems(struct list *list);
++void list_delete(struct list *list);
++int list_remove(struct list *list, void *elem);
++void list_map(struct list *list, void (* func)(void *arg));
++
++#endif
+--- /dev/null
++++ b/port/include/netif/pcapif.h
+@@ -0,0 +1,39 @@
++/*
++ * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
++ * All rights reserved. 
++ * 
++ * Redistribution and use in source and binary forms, with or without modification, 
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ * 3. The name of the author may not be used to endorse or promote products
++ *    derived from this software without specific prior written permission. 
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED 
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
++ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT 
++ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY 
++ * OF SUCH DAMAGE.
++ *
++ * This file is part of the lwIP TCP/IP stack.
++ * 
++ * Author: Adam Dunkels <adam@sics.se>
++ *
++ */
++#ifndef LWIP_PCAPIF_H
++#define LWIP_PCAPIF_H
++
++#include "lwip/netif.h"
++
++err_t pcapif_init(struct netif *netif);
++
++#endif /* LWIP_PCAPIF_H */
+--- /dev/null
++++ b/port/include/netif/sio.h
+@@ -0,0 +1,60 @@
++#ifndef SIO_UNIX_H
++#define SIO_UNIX_H
++
++#include "lwip/sys.h"
++#include "lwip/netif.h"
++#include "netif/fifo.h"
++/*#include "netif/pppif.h"*/
++
++struct sio_status_s {
++	int fd;
++	fifo_t myfifo;
++};
++
++/* BAUDRATE is defined in sio.c as it is implementation specific */
++/** Baudrates */
++typedef enum sioBaudrates {
++	SIO_BAUD_9600,
++	SIO_BAUD_19200,
++	SIO_BAUD_38400,
++	SIO_BAUD_57600,	
++	SIO_BAUD_115200	
++} sioBaudrates;
++
++/**
++* Poll for a new character from incoming data stream
++* @param 	siostat siostatus struct, contains sio instance data, given by sio_open
++* @return 	char read from input stream, or < 0 if no char was available
++*/
++s16_t sio_poll(sio_status_t * siostat);
++
++/**
++*	Parse incoming characters until a string str is recieved, blocking call
++* @param	str		zero terminated string to expect
++* @param 	siostat siostatus struct, contains sio instance data, given by sio_open
++*/
++void sio_expect_string(u8_t *str, sio_status_t * siostat);
++
++/**
++* Write a char to output data stream
++* @param 	str		pointer to a zero terminated string
++* @param	siostat siostatus struct, contains sio instance data, given by sio_open
++*/
++void sio_send_string(u8_t *str, sio_status_t * siostat);
++
++/**
++*	Flush outbuffer (send everything in buffer now), useful if some layer below is 
++*	holding on to data, waitng to fill a buffer
++* @param 	siostat siostatus struct, contains sio instance data, given by sio_open
++*/
++void sio_flush( sio_status_t * siostat );
++
++/**
++*	Change baudrate of port, may close and reopen port
++* @param 	baud	new baudrate
++* @param 	siostat siostatus struct, contains sio instance data, given by sio_open
++*/
++void sio_change_baud( sioBaudrates baud, sio_status_t * siostat );
++
++#endif
++
+--- /dev/null
++++ b/port/include/netif/tapif.h
+@@ -0,0 +1,43 @@
++/*
++ * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ * 3. The name of the author may not be used to endorse or promote products
++ *    derived from this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
++ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
++ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
++ * OF SUCH DAMAGE.
++ *
++ * This file is part of the lwIP TCP/IP stack.
++ *
++ * Author: Adam Dunkels <adam@sics.se>
++ *
++ */
++#ifndef LWIP_TAPIF_H
++#define LWIP_TAPIF_H
++
++#include "lwip/netif.h"
++
++err_t tapif_init(struct netif *netif);
++void tapif_poll(struct netif *netif);
++#if NO_SYS
++int tapif_select(struct netif *netif);
++#endif /* NO_SYS */
++
++#endif /* LWIP_TAPIF_H */
+--- /dev/null
++++ b/port/netif/fifo.c
+@@ -0,0 +1,139 @@
++/* Author: Magnus Ivarsson <magnus.ivarsson@volvo.com> */
++
++/* ---------------------------------------------- */
++/* --- fifo 4 unix ------------------------------ */
++/* ---------------------------------------------- */
++#include "lwip/err.h"
++#include "netif/fifo.h"
++#include "lwip/debug.h"
++#include "lwip/def.h"
++#include "lwip/sys.h"
++#include "lwip/arch.h"
++#include <unistd.h>
++
++#ifndef TRUE
++#define TRUE  1
++#endif
++#ifndef FALSE
++#define FALSE 0
++#endif
++
++#ifndef SIO_FIFO_DEBUG
++#define SIO_FIFO_DEBUG LWIP_DBG_OFF
++#endif
++
++u8_t fifoGet(fifo_t * fifo)
++{
++	u8_t c;
++
++	sys_sem_wait(&fifo->sem);      /* enter critical section */
++
++	if (fifo->dataslot == fifo->emptyslot)
++	{
++            fifo->getWaiting = TRUE;    /* tell putFifo to signal us when data is available */
++            sys_sem_signal(&fifo->sem);  /* leave critical section (allow input from serial port..) */
++            sys_sem_wait(&fifo->getSem); /* wait 4 data */
++            sys_sem_wait(&fifo->sem);    /* reenter critical section */
++	}
++
++	c = fifo->data[fifo->dataslot++];
++	fifo->len--;
++
++	if (fifo->dataslot == FIFOSIZE)
++	{
++		fifo->dataslot = 0;
++	}
++	sys_sem_signal(&fifo->sem);    /* leave critical section */
++	return c;
++}
++
++
++s16_t fifoGetNonBlock(fifo_t * fifo)
++{
++	u16_t c;
++
++	sys_sem_wait(&fifo->sem);      /* enter critical section */
++
++	if (fifo->dataslot == fifo->emptyslot)
++	{
++            /* empty fifo */
++		c = -1;
++	}
++	else
++	{
++		c = fifo->data[fifo->dataslot++];
++		fifo->len--;
++
++		if (fifo->dataslot == FIFOSIZE)
++		{
++			fifo->dataslot = 0;
++		}
++	}
++	sys_sem_signal(&fifo->sem);    /* leave critical section */
++	return c;
++}
++
++
++void fifoPut(fifo_t * fifo, int fd)
++{
++	/* FIXME: mutex around struct data.. */
++	int cnt=0;
++
++	sys_sem_wait(&fifo->sem ); /* enter critical */
++
++	LWIP_DEBUGF( SIO_FIFO_DEBUG,("fifoput: len%d dat%d empt%d --> ", fifo->len, fifo->dataslot, fifo->emptyslot ) );
++
++	if ( fifo->emptyslot < fifo->dataslot )
++	{
++		cnt = read( fd, &fifo->data[fifo->emptyslot], fifo->dataslot - fifo->emptyslot );
++	}
++	else
++	{
++		cnt = read( fd, &fifo->data[fifo->emptyslot], FIFOSIZE-fifo->emptyslot );
++	}
++	fifo->emptyslot += cnt;
++	fifo->len += cnt;
++
++	LWIP_DEBUGF( SIO_FIFO_DEBUG,("len%d dat%d empt%d\n", fifo->len, fifo->dataslot, fifo->emptyslot ) );
++
++	if ( fifo->len > FIFOSIZE )
++	{
++		printf( "ERROR: fifo overrun detected len=%d, flushing\n", fifo->len );
++		fifo->dataslot  = 0;
++		fifo->emptyslot = 0;
++		fifo->len = 0;
++	}
++
++	if ( fifo->emptyslot == FIFOSIZE )
++	{
++		fifo->emptyslot = 0;
++		LWIP_DEBUGF( SIO_FIFO_DEBUG, ("(WRAP) ") );
++
++		sys_sem_signal(&fifo->sem ); /* leave critical */
++		fifoPut( fifo, fd );
++		return;
++	}
++	if ( fifo->getWaiting )
++	{
++		fifo->getWaiting = FALSE;
++		sys_sem_signal(&fifo->getSem );
++	}
++
++	sys_sem_signal(&fifo->sem ); /* leave critical */
++	return;
++}
++
++
++void fifoInit(fifo_t * fifo)
++{
++  fifo->dataslot  = 0;
++  fifo->emptyslot = 0;
++  fifo->len       = 0;
++  if(sys_sem_new(&fifo->sem, 1) != ERR_OK) {  /* critical section 1=free to enter */
++    LWIP_ASSERT("Failed to create semaphore", 0);
++  }
++  if(sys_sem_new(&fifo->getSem, 0) != ERR_OK) {  /* 0 = no one waiting */
++    LWIP_ASSERT("Failed to create semaphore", 0);
++  }
++  fifo->getWaiting = FALSE;
++}
+--- /dev/null
++++ b/port/netif/list.c
+@@ -0,0 +1,152 @@
++/*
++ * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ * 3. The name of the author may not be used to endorse or promote products
++ *    derived from this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
++ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
++ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
++ * OF SUCH DAMAGE.
++ *
++ * This file is part of the lwIP TCP/IP stack.
++ *
++ * Author: Adam Dunkels <adam@sics.se>
++ *
++ */
++
++
++
++#include <stdlib.h>
++#include <netif/list.h>
++
++
++/*-----------------------------------------------------------------------------------*/
++struct list *
++list_new(int size)
++{
++  struct list *list;
++  list = (struct list *)malloc(sizeof(struct list));
++  list->first = list->last = NULL;
++  list->size = size;
++  list->elems = 0;
++  return list;
++}
++/*-----------------------------------------------------------------------------------*/
++int
++list_push(struct list *list, void *data)
++{
++  struct elem *elem;
++
++  if (list->elems < list->size) {
++    elem = (struct elem *)malloc(sizeof(struct elem));
++    elem->data = data;
++    elem->next = NULL;
++    if (list->last != NULL) {
++      list->last->next = elem;
++    }
++    list->last = elem;
++    if (list->first == NULL) {
++      list->first = elem;
++    }
++    list->elems++;
++    return 1;
++  }
++  return 0;
++}
++/*-----------------------------------------------------------------------------------*/
++void *
++list_pop(struct list *list)
++{
++  struct elem *elem;
++  void *data;
++
++  if (list->elems > 0) {
++    elem = list->first;
++    if (elem == list->last) {
++      list->last = elem->next;
++    }
++    list->first = elem->next;
++
++    list->elems--;
++
++    data = elem->data;
++    free(elem);
++
++    return data;
++  }
++  return NULL;
++}
++/*-----------------------------------------------------------------------------------*/
++void *
++list_first(struct list *list)
++{
++  return list->first;
++}
++/*-----------------------------------------------------------------------------------*/
++int
++list_elems(struct list *list)
++{
++  return list->elems;
++}
++/*-----------------------------------------------------------------------------------*/
++void
++list_delete(struct list *list)
++{
++  while (list_pop(list) != NULL);
++  free(list);
++}
++/*-----------------------------------------------------------------------------------*/
++int
++list_remove(struct list *list, void *elem)
++{
++  struct elem *e, *p;
++
++  p = NULL;
++  for(e = list->first; e != NULL; e = e->next) {
++    if (e->data == elem) {
++      if (p != NULL) {
++        p->next = e->next;
++      } else {
++        list->first = e->next;
++      }
++      if (list->last == e) {
++        list->last = p;
++        if (p != NULL) {
++          p->next = NULL;
++        }
++      }
++      free(e);
++      list->elems--;
++      return 1;
++    }
++    p = e;
++  }
++  return 0;
++}
++/*-----------------------------------------------------------------------------------*/
++void
++list_map(struct list *list, void (* func)(void *arg))
++{
++  struct elem *e;
++
++  for(e = list->first; e != NULL; e = e->next) {
++    func(e->data);
++  }
++}
++/*-----------------------------------------------------------------------------------*/
+--- /dev/null
++++ b/port/netif/pcapif.c
+@@ -0,0 +1,209 @@
++/*
++ * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ * 3. The name of the author may not be used to endorse or promote products
++ *    derived from this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
++ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
++ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
++ * OF SUCH DAMAGE.
++ *
++ * This file is part of the lwIP TCP/IP stack.
++ *
++ * Author: Adam Dunkels <adam@sics.se>
++ *
++ */
++
++#ifndef linux  /* Apparently, this doesn't work under Linux. */
++
++#include "lwip/debug.h"
++
++#include <fcntl.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <unistd.h>
++#include <sys/types.h>
++#include <sys/uio.h>
++#include <sys/socket.h>
++#include <sys/un.h>
++#include <sys/stat.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
++
++#include <pcap.h>
++
++#include "netif/etharp.h"
++
++#include "lwip/stats.h"
++
++#include "lwip/def.h"
++#include "lwip/mem.h"
++#include "lwip/pbuf.h"
++#include "lwip/sys.h"
++
++#include "lwip/ip.h"
++
++
++struct pcapif {
++  pcap_t *pd;
++  sys_sem_t sem;
++  u8_t pkt[2048];
++  u32_t len;
++  u32_t lasttime;
++  struct pbuf *p;
++  struct eth_addr *ethaddr;
++};
++
++static char errbuf[PCAP_ERRBUF_SIZE];
++
++/*-----------------------------------------------------------------------------------*/
++static err_t
++pcapif_output(struct netif *netif, struct pbuf *p,
++	      ip_addr_t *ipaddr)
++{
++  return ERR_OK;
++}
++/*-----------------------------------------------------------------------------------*/
++static void
++timeout(void *arg)
++{
++  struct netif *netif;
++  struct pcapif *pcapif;
++  struct pbuf *p;
++  struct eth_hdr *ethhdr;
++
++  netif = (struct netif *)arg;
++  pcapif = netif->state;
++  ethhdr = (struct eth_hdr *)pcapif->pkt;
++
++
++  if (lwip_htons(ethhdr->type) != ETHTYPE_IP ||
++     ip_lookup(pcapif->pkt + 14, netif)) {
++
++    /* We allocate a pbuf chain of pbufs from the pool. */
++    p = pbuf_alloc(PBUF_LINK, pcapif->len, PBUF_POOL);
++
++    if (p != NULL) {
++      pbuf_take(p, pcapif->pkt, pcapif->len);
++
++      ethhdr = p->payload;
++      switch (lwip_htons(ethhdr->type)) {
++      /* IP or ARP packet? */
++      case ETHTYPE_IP:
++      case ETHTYPE_ARP:
++#if PPPOE_SUPPORT
++      /* PPPoE packet? */
++      case ETHTYPE_PPPOEDISC:
++      case ETHTYPE_PPPOE:
++#endif /* PPPOE_SUPPORT */
++        /* full packet send to tcpip_thread to process */
++        if (netif->input(p, netif) != ERR_OK) {
++          LWIP_DEBUGF(NETIF_DEBUG, ("ethernetif_input: IP input error\n"));
++          pbuf_free(p);
++          p = NULL;
++        }
++        break;
++      default:
++        pbuf_free(p);
++        break;
++      }
++    }
++  } else {
++    printf("ip_lookup dropped\n");
++  }
++
++  sys_sem_signal(&pcapif->sem);
++}
++/*-----------------------------------------------------------------------------------*/
++static void
++callback(u_char *arg, const struct pcap_pkthdr *hdr, const u_char *pkt)
++{
++  struct netif *netif;
++  struct pcapif *pcapif;
++  u32_t time, lasttime;
++
++  netif = (struct netif *)arg;
++  pcapif = netif->state;
++
++  pcapif->len = hdr->len;
++
++  bcopy(pkt, pcapif->pkt, hdr->len);
++
++  time = hdr->ts.tv_sec * 1000 + hdr->ts.tv_usec / 1000;
++
++  lasttime = pcapif->lasttime;
++  pcapif->lasttime = time;
++
++
++  if (lasttime == 0) {
++    sys_timeout(1000, timeout, netif);
++  } else {
++    sys_timeout(time - lasttime, timeout, netif);
++  }
++}
++/*-----------------------------------------------------------------------------------*/
++static void
++pcapif_thread(void *arg)
++{
++  struct netif *netif;
++  struct pcapif *pcapif;
++  netif = arg;
++  pcapif = netif->state;
++
++  while (1) {
++    pcap_loop(pcapif->pd, 1, callback, (u_char *)netif);
++    sys_sem_wait(&pcapif->sem);
++    if (pcapif->p != NULL) {
++      netif->input(pcapif->p, netif);
++    }
++  }
++}
++/*-----------------------------------------------------------------------------------*/
++err_t
++pcapif_init(struct netif *netif)
++{
++  struct pcapif *p;
++
++  p = malloc(sizeof(struct pcapif));
++  if (p == NULL)
++      return ERR_MEM;
++  netif->state = p;
++  netif->name[0] = 'p';
++  netif->name[1] = 'c';
++  netif->output = pcapif_output;
++
++  p->pd = pcap_open_offline("pcapdump", errbuf);
++  if (p->pd == NULL) {
++    printf("pcapif_init: failed %s\n", errbuf);
++    return ERR_IF;
++  }
++
++  if(sys_sem_new(&p->sem, 0) != ERR_OK) {
++    LWIP_ASSERT("Failed to create semaphore", 0);
++  }
++  p->p = NULL;
++  p->lasttime = 0;
++
++  sys_thread_new("pcapif_thread", pcapif_thread, netif, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
++  return ERR_OK;
++}
++/*-----------------------------------------------------------------------------------*/
++#else /* linux */
++typedef int avoid_empty_compilation_unit;
++#endif /* linux */
+--- /dev/null
++++ b/port/netif/sio.c
+@@ -0,0 +1,488 @@
++/* Author: Magnus Ivarsson <magnus.ivarsson@volvo.com> */
++
++/* to get rid of implicit function declarations */
++#define _XOPEN_SOURCE 600
++#define _GNU_SOURCE
++
++/* build with Darwin C extensions not part of POSIX, i.e. FASYNC, SIGIO.
++   we can't use LWIP_UNIX_MACH because extensions need to be turned
++   on before any system headers (which are pulled in through cc.h)
++   are included */
++#if defined(__APPLE__)
++#define _DARWIN_C_SOURCE
++#endif
++
++#include "netif/sio.h"
++#include "netif/fifo.h"
++#include "lwip/debug.h"
++#include "lwip/def.h"
++#include "lwip/sys.h"
++#include "lwip/arch.h"
++#include "lwip/sio.h"
++#include "netif/ppp/ppp_opts.h"
++
++/* Following #undefs are here to keep compiler from issuing warnings
++   about them being double defined. (They are defined in lwip/inet.h
++   as well as the Unix #includes below.) */
++#undef htonl
++#undef ntohl
++#undef htons
++#undef ntohs
++#undef HTONL
++#undef NTOHL
++#undef HTONS
++#undef NTOHS
++
++#include <stdlib.h>
++#include <stdio.h>
++#if defined(LWIP_UNIX_OPENBSD)
++#include <util.h>
++#endif
++#include <termios.h>
++#include <stdio.h>
++#include <unistd.h>
++#include <fcntl.h>
++#include <signal.h>
++#include <string.h>
++#include <sys/signal.h>
++#include <sys/types.h>
++
++#ifndef LWIP_HAVE_SLIPIF
++#define LWIP_HAVE_SLIPIF 0
++#endif
++
++#if (PPP_SUPPORT || LWIP_HAVE_SLIPIF) && defined(LWIP_UNIX_LINUX)
++#include <pty.h>
++#endif
++
++/*#define BAUDRATE B19200 */
++/*#define BAUDRATE B57600 */
++#define BAUDRATE B115200
++
++#ifndef TRUE
++#define TRUE  1
++#endif
++#ifndef FALSE
++#define FALSE 0
++#endif
++
++/* for all of you who dont define SIO_DEBUG in debug.h */
++#ifndef SIO_DEBUG
++#define SIO_DEBUG 0
++#endif
++
++
++/*  typedef struct siostruct_t */
++/*  {  */
++/*  	sio_status_t *sio; */
++/*  } siostruct_t; */
++
++/** array of ((siostruct*)netif->state)->sio structs */
++static sio_status_t statusar[4];
++
++#if ! (PPP_SUPPORT || LWIP_HAVE_SLIPIF)
++/* --private-functions----------------------------------------------------------------- */
++/**
++ * Signal handler for ttyXX0 to indicate bytes received
++ * one per interface is needed since we cannot send a instance number / pointer as callback argument (?)
++ */
++static void	signal_handler_IO_0( int status )
++{
++	LWIP_UNUSED_ARG(status);
++	LWIP_DEBUGF(SIO_DEBUG, ("SigHand: rxSignal channel 0\n"));
++	fifoPut( &statusar[0].myfifo, statusar[0].fd );
++}
++
++/**
++ * Signal handler for ttyXX1 to indicate bytes received
++ * one per interface is needed since we cannot send a instance number / pointer as callback argument (?)
++ */
++static void signal_handler_IO_1( int status )
++{
++	LWIP_UNUSED_ARG(status);
++	LWIP_DEBUGF(SIO_DEBUG, ("SigHand: rxSignal channel 1\n"));
++	fifoPut( &statusar[1].myfifo, statusar[1].fd );
++}
++#endif /* ! (PPP_SUPPORT || LWIP_HAVE_SLIPIF) */
++
++/**
++* Initiation of serial device
++* @param device string with the device name and path, eg. "/dev/ttyS0"
++* @param devnum device number
++* @param siostat status
++* @return file handle to serial dev.
++*/
++static int sio_init( char * device, int devnum, sio_status_t * siostat )
++{
++	struct termios oldtio,newtio;
++#if ! (PPP_SUPPORT || LWIP_HAVE_SLIPIF)
++	struct sigaction saio;           /* definition of signal action */
++#endif
++	int fd;
++	LWIP_UNUSED_ARG(siostat);
++	LWIP_UNUSED_ARG(devnum);
++
++	/* open the device to be non-blocking (read will return immediately) */
++	fd = open( device, O_RDWR | O_NOCTTY | O_NONBLOCK );
++	if ( fd < 0 )
++	{
++		perror( device );
++		exit( -1 );
++	}
++
++#if ! (PPP_SUPPORT || LWIP_HAVE_SLIPIF)
++	/* install the signal handler before making the device asynchronous */
++	switch ( devnum )
++	{
++		case 0:
++			LWIP_DEBUGF( SIO_DEBUG, ("sioinit, signal_handler_IO_0\n") );
++			saio.sa_handler = signal_handler_IO_0;
++			break;
++		case 1:
++			LWIP_DEBUGF( SIO_DEBUG, ("sioinit, signal_handler_IO_1\n") );
++			saio.sa_handler = signal_handler_IO_1;
++			break;
++		default:
++			LWIP_DEBUGF( SIO_DEBUG,("sioinit, devnum not allowed\n") );
++			break;
++	}
++
++	saio.sa_flags = 0;
++#if defined(LWIP_UNIX_LINUX)
++	saio.sa_restorer = NULL;
++#endif /* LWIP_UNIX_LINUX */
++	sigaction( SIGIO,&saio,NULL );
++
++	/* allow the process to receive SIGIO */
++       	if ( fcntl( fd, F_SETOWN, getpid( ) ) != 0)
++	{
++		perror( device );
++		exit( -1 );
++	}
++	/* Make the file descriptor asynchronous (the manual page says only
++	O_APPEND and O_NONBLOCK, will work with F_SETFL...) */
++       	if ( fcntl( fd, F_SETFL, FASYNC ) != 0)
++	{
++		perror( device );
++		exit( -1 );
++	}
++#else
++       	if ( fcntl( fd, F_SETFL, 0 ) != 0)
++	{
++		perror( device );
++		exit( -1 );
++	}
++
++#endif /* ! (PPP_SUPPORT || LWIP_HAVE_SLIPIF) */
++
++	tcgetattr( fd,&oldtio ); /* save current port settings */
++	/* set new port settings */
++	/* see 'man termios' for further settings */
++        memset(&newtio, 0, sizeof(newtio));
++	newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD | CRTSCTS;
++	newtio.c_iflag = 0;
++	newtio.c_oflag = 0;
++	newtio.c_lflag = 0; /*ECHO; */
++	newtio.c_cc[VMIN] = 1; /* Read 1 byte at a time, no timer */
++	newtio.c_cc[VTIME] = 0;
++
++	tcsetattr( fd,TCSANOW,&newtio );
++	tcflush( fd, TCIOFLUSH );
++
++	return fd;
++}
++
++/**
++*
++*/
++static void sio_speed( int fd, int speed )
++{
++	struct termios oldtio,newtio;
++	/*  int fd; */
++
++	LWIP_DEBUGF(SIO_DEBUG, ("sio_speed[%d]: baudcode:%d enter\n", fd, speed));
++
++	if ( fd < 0 )
++	{
++		LWIP_DEBUGF(SIO_DEBUG, ("sio_speed[%d]: fd ERROR\n", fd));
++		exit( -1 );
++	}
++
++	tcgetattr( fd,&oldtio ); /* get current port settings */
++
++	/* set new port settings
++	* see 'man termios' for further settings */
++        memset(&newtio, 0, sizeof(newtio));
++	newtio.c_cflag = speed | CS8 | CLOCAL | CREAD; /* | CRTSCTS; */
++	newtio.c_iflag = 0;
++	newtio.c_oflag = 0;
++	newtio.c_lflag = 0; /*ECHO; */
++	newtio.c_cc[VMIN] = 1; /* Read 1 byte at a time, no timer */
++	newtio.c_cc[VTIME] = 0;
++
++	tcsetattr( fd,TCSANOW,&newtio );
++	tcflush( fd, TCIOFLUSH );
++
++	LWIP_DEBUGF(SIO_DEBUG, ("sio_speed[%d]: leave\n", fd));
++}
++
++/* --public-functions----------------------------------------------------------------------------- */
++void sio_send( u8_t c, sio_status_t * siostat )
++{
++    /*	sio_status_t * siostat = ((siostruct_t*)netif->state)->sio; */
++
++	if ( write( siostat->fd, &c, 1 ) <= 0 )
++	{
++		LWIP_DEBUGF(SIO_DEBUG, ("sio_send[%d]: write refused\n", siostat->fd));
++	}
++}
++
++void sio_send_string( u8_t *str, sio_status_t * siostat )
++{
++    /*	sio_status_t * siostat = ((siostruct_t*)netif->state)->sio; */
++	int len = strlen( (const char *)str );
++
++	if ( write( siostat->fd, str, len ) <= 0 )
++	{
++		LWIP_DEBUGF(SIO_DEBUG, ("sio_send_string[%d]: write refused\n", siostat->fd));
++	}
++	LWIP_DEBUGF(SIO_DEBUG, ("sio_send_string[%d]: sent: %s\n", siostat->fd, str));
++}
++
++
++void sio_flush( sio_status_t * siostat )
++{
++	LWIP_UNUSED_ARG(siostat);
++	/* not implemented in unix as it is not needed */
++ 	/*sio_status_t * siostat = ((siostruct_t*)netif->state)->sio; */
++}
++
++
++#if ! (PPP_SUPPORT || LWIP_HAVE_SLIPIF)
++/*u8_t sio_recv( struct netif * netif )*/
++u8_t sio_recv( sio_status_t * siostat )
++{
++    /*	sio_status_t * siostat = ((siostruct_t*)netif->state)->sio; */
++	return fifoGet( &(siostat->myfifo) );
++}
++
++s16_t sio_poll(sio_status_t * siostat)
++{
++    /*	sio_status_t * siostat = ((siostruct_t*)netif->state)->sio;*/
++	return fifoGetNonBlock( &(siostat->myfifo) );
++}
++
++
++void sio_expect_string( u8_t *str, sio_status_t * siostat )
++{
++    /*	sio_status_t * siostat = ((siostruct_t*)netif->state)->sio;*/
++	u8_t c;
++ 	int finger=0;
++
++	LWIP_DEBUGF(SIO_DEBUG, ("sio_expect_string[%d]: %s\n", siostat->fd, str));
++	while ( 1 )
++	{
++		c=fifoGet( &(siostat->myfifo) );
++		LWIP_DEBUGF(SIO_DEBUG, ("_%c", c));
++		if ( c==str[finger] )
++		{
++			finger++;
++		} else if ( finger > 0 )
++		{
++                    /*it might fit in the beginning? */
++			if ( str[0] == c )
++			{
++				finger = 1;
++			}
++		}
++		if ( 0 == str[finger] )
++                    break;	/* done, we have a match */
++	}
++	LWIP_DEBUGF(SIO_DEBUG, ("sio_expect_string[%d]: [match]\n", siostat->fd));
++}
++#endif /* ! (PPP_SUPPORT || LWIP_HAVE_SLIPIF) */
++
++#if (PPP_SUPPORT || LWIP_HAVE_SLIPIF)
++u32_t sio_write(sio_status_t * siostat, u8_t *buf, u32_t size)
++{
++    ssize_t wsz = write( siostat->fd, buf, size );
++    return wsz < 0 ? 0 : wsz;
++}
++
++u32_t sio_read(sio_status_t * siostat, u8_t *buf, u32_t size)
++{
++    ssize_t rsz = read( siostat->fd, buf, size );
++    return rsz < 0 ? 0 : rsz;
++}
++
++void sio_read_abort(sio_status_t * siostat)
++{
++    LWIP_UNUSED_ARG(siostat);
++    printf("sio_read_abort[%d]: not yet implemented for unix\n", siostat->fd);
++}
++#endif /* (PPP_SUPPORT || LWIP_HAVE_SLIPIF) */
++
++sio_fd_t sio_open(u8_t devnum)
++{
++	char dev[20];
++
++	/* would be nice with dynamic memory alloc */
++	sio_status_t * siostate = &statusar[ devnum ];
++/* 	siostruct_t * tmp; */
++
++
++/* 	tmp = (siostruct_t*)(netif->state); */
++/* 	tmp->sio = siostate; */
++
++/* 	tmp = (siostruct_t*)(netif->state); */
++
++/* 	((sio_status_t*)(tmp->sio))->fd = 0; */
++
++	LWIP_DEBUGF(SIO_DEBUG, ("sio_open: for devnum %d\n", devnum));
++
++#if ! (PPP_SUPPORT || LWIP_HAVE_SLIPIF)
++	fifoInit( &siostate->myfifo );
++#endif /* ! PPP_SUPPORT */
++
++	snprintf( dev, sizeof(dev), "/dev/ttyS%d", devnum );
++
++	if ( (devnum == 1) || (devnum == 0) )
++	{
++		if ( ( siostate->fd = sio_init( dev, devnum, siostate ) ) == 0 )
++		{
++			LWIP_DEBUGF(SIO_DEBUG, ("sio_open: ERROR opening serial device dev=%s\n", dev));
++			abort( );
++			return NULL;
++		}
++		LWIP_DEBUGF(SIO_DEBUG, ("sio_open[%d]: dev=%s open.\n", siostate->fd, dev));
++	}
++#if PPP_SUPPORT
++	else if (devnum == 2) {
++	    pid_t childpid;
++	    char name[256];
++	    childpid = forkpty(&siostate->fd, name, NULL, NULL);
++	    if(childpid < 0) {
++		perror("forkpty");
++		exit (1);
++	    }
++	    if(childpid == 0) {
++		execl("/usr/sbin/pppd", "pppd",
++			"ms-dns", "198.168.100.7",
++			"local", "crtscts",
++			"debug",
++#ifdef LWIP_PPP_CHAP_TEST
++			"auth",
++			"require-chap",
++			"remotename", "lwip",
++#else
++			"noauth",
++#endif
++#if LWIP_IPV6
++			"+ipv6",
++#endif
++			"192.168.1.1:192.168.1.2",
++			NULL);
++		perror("execl pppd");
++		exit (1);
++	    } else {
++		LWIP_DEBUGF(SIO_DEBUG, ("sio_open[%d]: spawned pppd pid %d on %s\n",
++			siostate->fd, childpid, name));
++	    }
++
++	}
++#endif
++#if LWIP_HAVE_SLIPIF
++	else if (devnum == 3) {
++	    pid_t childpid;
++	    /* create PTY pair */
++	    siostate->fd = posix_openpt(O_RDWR | O_NOCTTY);
++	    if (siostate->fd < 0) {
++		perror("open pty master");
++		exit (1);
++	    }
++	    if (grantpt(siostate->fd) != 0) {
++		perror("grant pty master");
++		exit (1);
++	    }
++	    if (unlockpt(siostate->fd) != 0) {
++		perror("unlock pty master");
++		exit (1);
++	    }
++	    LWIP_DEBUGF(SIO_DEBUG, ("sio_open[%d]: for %s\n",
++		    siostate->fd, ptsname(siostate->fd)));
++	    /* fork for slattach */
++	    childpid = fork();
++	    if(childpid < 0) {
++		perror("fork");
++		exit (1);
++	    }
++	    if(childpid == 0) {
++		/* esteblish SLIP interface on host side connected to PTY slave */
++		execl("/sbin/slattach", "slattach",
++			"-d", "-v", "-L", "-p", "slip",
++			ptsname(siostate->fd),
++			NULL);
++		perror("execl slattach");
++		exit (1);
++	    } else {
++		int ret;
++		char buf[1024];
++		LWIP_DEBUGF(SIO_DEBUG, ("sio_open[%d]: spawned slattach pid %d on %s\n",
++			siostate->fd, childpid, ptsname(siostate->fd)));
++		/* wait a moment for slattach startup */
++		sleep(1);
++		/* configure SLIP interface on host side as P2P interface */
++		snprintf(buf, sizeof(buf),
++			"/sbin/ifconfig sl0 mtu %d %s pointopoint %s up",
++			SLIP_MAX_SIZE, "192.168.2.1", "192.168.2.2");
++		LWIP_DEBUGF(SIO_DEBUG, ("sio_open[%d]: system(\"%s\");\n", siostate->fd, buf));
++		ret = system(buf);
++		if (ret < 0) {
++		    perror("ifconfig failed");
++		    exit(1);
++		}
++	    }
++	}
++#endif /* LWIP_HAVE_SLIPIF */
++	else
++	{
++		LWIP_DEBUGF(SIO_DEBUG, ("sio_open: device %s (%d) is not supported\n", dev, devnum));
++		return NULL;
++	}
++
++	return siostate;
++}
++
++/**
++*
++*/
++void sio_change_baud( sioBaudrates baud, sio_status_t * siostat )
++{
++    /*	sio_status_t * siostat = ((siostruct_t*)netif->state)->sio;*/
++
++	LWIP_DEBUGF(SIO_DEBUG, ("sio_change_baud[%d]\n", siostat->fd));
++
++	switch ( baud )
++	{
++		case SIO_BAUD_9600:
++			sio_speed( siostat->fd, B9600 );
++			break;
++		case SIO_BAUD_19200:
++			sio_speed( siostat->fd, B19200 );
++			break;
++		case SIO_BAUD_38400:
++			sio_speed( siostat->fd, B38400 );
++			break;
++		case SIO_BAUD_57600:
++			sio_speed( siostat->fd, B57600 );
++			break;
++		case SIO_BAUD_115200:
++			sio_speed( siostat->fd, B115200 );
++			break;
++
++		default:
++			LWIP_DEBUGF(SIO_DEBUG, ("sio_change_baud[%d]: Unknown baudrate, code:%d\n",
++					siostat->fd, baud));
++			break;
++	}
++}
+--- /dev/null
++++ b/port/netif/tapif.c
+@@ -0,0 +1,432 @@
++/*
++ * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without modification,
++ * are permitted provided that the following conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ * 3. The name of the author may not be used to endorse or promote products
++ *    derived from this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
++ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
++ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
++ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
++ * OF SUCH DAMAGE.
++ *
++ * This file is part of the lwIP TCP/IP stack.
++ *
++ * Author: Adam Dunkels <adam@sics.se>
++ *
++ */
++
++#include <fcntl.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <unistd.h>
++#include <string.h>
++#include <sys/ioctl.h>
++#include <sys/socket.h>
++#include <sys/types.h>
++#include <sys/time.h>
++#include <sys/uio.h>
++#include <sys/socket.h>
++
++#include "lwip/opt.h"
++
++#include "lwip/debug.h"
++#include "lwip/def.h"
++#include "lwip/ip.h"
++#include "lwip/mem.h"
++#include "lwip/stats.h"
++#include "lwip/snmp.h"
++#include "lwip/pbuf.h"
++#include "lwip/sys.h"
++#include "lwip/timeouts.h"
++#include "netif/etharp.h"
++#include "lwip/ethip6.h"
++
++#include "netif/tapif.h"
++
++#define IFCONFIG_BIN "/sbin/ifconfig "
++
++#if defined(LWIP_UNIX_LINUX)
++#include <sys/ioctl.h>
++#include <linux/if.h>
++#include <linux/if_tun.h>
++/*
++ * Creating a tap interface requires special privileges. If the interfaces
++ * is created in advance with `tunctl -u <user>` it can be opened as a regular
++ * user. The network must already be configured. If DEVTAP_IF is defined it
++ * will be opened instead of creating a new tap device.
++ *
++ * You can also use PRECONFIGURED_TAPIF environment variable to do so.
++ */
++#ifndef DEVTAP_DEFAULT_IF
++#define DEVTAP_DEFAULT_IF "tap0"
++#endif
++#ifndef DEVTAP
++#define DEVTAP "/dev/net/tun"
++#endif
++#define NETMASK_ARGS "netmask %d.%d.%d.%d"
++#define IFCONFIG_ARGS "tap0 inet %d.%d.%d.%d " NETMASK_ARGS
++#elif defined(LWIP_UNIX_OPENBSD)
++#define DEVTAP "/dev/tun0"
++#define NETMASK_ARGS "netmask %d.%d.%d.%d"
++#define IFCONFIG_ARGS "tun0 inet %d.%d.%d.%d " NETMASK_ARGS " link0"
++#else /* others */
++#define DEVTAP "/dev/tap0"
++#define NETMASK_ARGS "netmask %d.%d.%d.%d"
++#define IFCONFIG_ARGS "tap0 inet %d.%d.%d.%d " NETMASK_ARGS
++#endif
++
++/* Define those to better describe your network interface. */
++#define IFNAME0 't'
++#define IFNAME1 'p'
++
++#ifndef TAPIF_DEBUG
++#define TAPIF_DEBUG LWIP_DBG_OFF
++#endif
++
++struct tapif {
++  /* Add whatever per-interface state that is needed here. */
++  int fd;
++};
++
++/* Forward declarations. */
++static void tapif_input(struct netif *netif);
++#if !NO_SYS
++static void tapif_thread(void *arg);
++#endif /* !NO_SYS */
++
++/*-----------------------------------------------------------------------------------*/
++static void
++low_level_init(struct netif *netif)
++{
++  struct tapif *tapif;
++#if LWIP_IPV4
++  int ret;
++  char buf[1024];
++#endif /* LWIP_IPV4 */
++  char *preconfigured_tapif = getenv("PRECONFIGURED_TAPIF");
++
++  tapif = (struct tapif *)netif->state;
++
++  /* Obtain MAC address from network interface. */
++
++  /* (We just fake an address...) */
++  netif->hwaddr[0] = 0x02;
++  netif->hwaddr[1] = 0x12;
++  netif->hwaddr[2] = 0x34;
++  netif->hwaddr[3] = 0x56;
++  netif->hwaddr[4] = 0x78;
++  netif->hwaddr[5] = 0xab;
++  netif->hwaddr_len = 6;
++
++  /* device capabilities */
++  netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_IGMP;
++
++  tapif->fd = open(DEVTAP, O_RDWR);
++  LWIP_DEBUGF(TAPIF_DEBUG, ("tapif_init: fd %d\n", tapif->fd));
++  if (tapif->fd == -1) {
++#ifdef LWIP_UNIX_LINUX
++    perror("tapif_init: try running \"modprobe tun\" or rebuilding your kernel with CONFIG_TUN; cannot open "DEVTAP);
++#else /* LWIP_UNIX_LINUX */
++    perror("tapif_init: cannot open "DEVTAP);
++#endif /* LWIP_UNIX_LINUX */
++    exit(1);
++  }
++
++#ifdef LWIP_UNIX_LINUX
++  {
++    struct ifreq ifr;
++    memset(&ifr, 0, sizeof(ifr));
++
++    if (preconfigured_tapif) {
++      strncpy(ifr.ifr_name, preconfigured_tapif, sizeof(ifr.ifr_name));
++    } else {
++      strncpy(ifr.ifr_name, DEVTAP_DEFAULT_IF, sizeof(ifr.ifr_name));
++    }
++    ifr.ifr_name[sizeof(ifr.ifr_name)-1] = 0; /* ensure \0 termination */
++
++    ifr.ifr_flags = IFF_TAP|IFF_NO_PI;
++    if (ioctl(tapif->fd, TUNSETIFF, (void *) &ifr) < 0) {
++      perror("tapif_init: "DEVTAP" ioctl TUNSETIFF");
++      exit(1);
++    }
++  }
++#endif /* LWIP_UNIX_LINUX */
++
++  netif_set_link_up(netif);
++
++  if (preconfigured_tapif == NULL) {
++#if LWIP_IPV4
++    snprintf(buf, 1024, IFCONFIG_BIN IFCONFIG_ARGS,
++             ip4_addr1(netif_ip4_gw(netif)),
++             ip4_addr2(netif_ip4_gw(netif)),
++             ip4_addr3(netif_ip4_gw(netif)),
++             ip4_addr4(netif_ip4_gw(netif))
++#ifdef NETMASK_ARGS
++             ,
++             ip4_addr1(netif_ip4_netmask(netif)),
++             ip4_addr2(netif_ip4_netmask(netif)),
++             ip4_addr3(netif_ip4_netmask(netif)),
++             ip4_addr4(netif_ip4_netmask(netif))
++#endif /* NETMASK_ARGS */
++             );
++
++    LWIP_DEBUGF(TAPIF_DEBUG, ("tapif_init: system(\"%s\");\n", buf));
++    ret = system(buf);
++    if (ret < 0) {
++      perror("ifconfig failed");
++      exit(1);
++    }
++    if (ret != 0) {
++      printf("ifconfig returned %d\n", ret);
++    }
++#else /* LWIP_IPV4 */
++    perror("todo: support IPv6 support for non-preconfigured tapif");
++    exit(1);
++#endif /* LWIP_IPV4 */
++  }
++
++#if !NO_SYS
++  sys_thread_new("tapif_thread", tapif_thread, netif, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
++#endif /* !NO_SYS */
++}
++/*-----------------------------------------------------------------------------------*/
++/*
++ * low_level_output():
++ *
++ * Should do the actual transmission of the packet. The packet is
++ * contained in the pbuf that is passed to the function. This pbuf
++ * might be chained.
++ *
++ */
++/*-----------------------------------------------------------------------------------*/
++
++static err_t
++low_level_output(struct netif *netif, struct pbuf *p)
++{
++  struct tapif *tapif = (struct tapif *)netif->state;
++  char buf[1518]; /* max packet size including VLAN excluding CRC */
++  ssize_t written;
++
++#if 0
++  if (((double)rand()/(double)RAND_MAX) < 0.2) {
++    printf("drop output\n");
++    return ERR_OK; /* ERR_OK because we simulate packet loss on cable */
++  }
++#endif
++
++  if (p->tot_len > sizeof(buf)) {
++    MIB2_STATS_NETIF_INC(netif, ifoutdiscards);
++    perror("tapif: packet too large");
++    return ERR_IF;
++  }
++
++  /* initiate transfer(); */
++  pbuf_copy_partial(p, buf, p->tot_len, 0);
++
++  /* signal that packet should be sent(); */
++  written = write(tapif->fd, buf, p->tot_len);
++  if (written < p->tot_len) {
++    MIB2_STATS_NETIF_INC(netif, ifoutdiscards);
++    perror("tapif: write");
++    return ERR_IF;
++  } else {
++    MIB2_STATS_NETIF_ADD(netif, ifoutoctets, (u32_t)written);
++    return ERR_OK;
++  }
++}
++/*-----------------------------------------------------------------------------------*/
++/*
++ * low_level_input():
++ *
++ * Should allocate a pbuf and transfer the bytes of the incoming
++ * packet from the interface into the pbuf.
++ *
++ */
++/*-----------------------------------------------------------------------------------*/
++static struct pbuf *
++low_level_input(struct netif *netif)
++{
++  struct pbuf *p;
++  u16_t len;
++  ssize_t readlen;
++  char buf[1518]; /* max packet size including VLAN excluding CRC */
++  struct tapif *tapif = (struct tapif *)netif->state;
++
++  /* Obtain the size of the packet and put it into the "len"
++     variable. */
++  readlen = read(tapif->fd, buf, sizeof(buf));
++  if (readlen < 0) {
++    perror("read returned -1");
++    exit(1);
++  }
++  len = (u16_t)readlen;
++
++  MIB2_STATS_NETIF_ADD(netif, ifinoctets, len);
++
++#if 0
++  if (((double)rand()/(double)RAND_MAX) < 0.2) {
++    printf("drop\n");
++    return NULL;
++  }
++#endif
++
++  /* We allocate a pbuf chain of pbufs from the pool. */
++  p = pbuf_alloc(PBUF_RAW, len, PBUF_POOL);
++  if (p != NULL) {
++    pbuf_take(p, buf, len);
++    /* acknowledge that packet has been read(); */
++  } else {
++    /* drop packet(); */
++    MIB2_STATS_NETIF_INC(netif, ifindiscards);
++    LWIP_DEBUGF(NETIF_DEBUG, ("tapif_input: could not allocate pbuf\n"));
++  }
++
++  return p;
++}
++
++/*-----------------------------------------------------------------------------------*/
++/*
++ * tapif_input():
++ *
++ * This function should be called when a packet is ready to be read
++ * from the interface. It uses the function low_level_input() that
++ * should handle the actual reception of bytes from the network
++ * interface.
++ *
++ */
++/*-----------------------------------------------------------------------------------*/
++static void
++tapif_input(struct netif *netif)
++{
++  struct pbuf *p = low_level_input(netif);
++
++  if (p == NULL) {
++#if LINK_STATS
++    LINK_STATS_INC(link.recv);
++#endif /* LINK_STATS */
++    LWIP_DEBUGF(TAPIF_DEBUG, ("tapif_input: low_level_input returned NULL\n"));
++    return;
++  }
++
++  if (netif->input(p, netif) != ERR_OK) {
++    LWIP_DEBUGF(NETIF_DEBUG, ("tapif_input: netif input error\n"));
++    pbuf_free(p);
++  }
++}
++/*-----------------------------------------------------------------------------------*/
++/*
++ * tapif_init():
++ *
++ * Should be called at the beginning of the program to set up the
++ * network interface. It calls the function low_level_init() to do the
++ * actual setup of the hardware.
++ *
++ */
++/*-----------------------------------------------------------------------------------*/
++err_t
++tapif_init(struct netif *netif)
++{
++  struct tapif *tapif = (struct tapif *)mem_malloc(sizeof(struct tapif));
++
++  if (tapif == NULL) {
++    LWIP_DEBUGF(NETIF_DEBUG, ("tapif_init: out of memory for tapif\n"));
++    return ERR_MEM;
++  }
++  netif->state = tapif;
++  MIB2_INIT_NETIF(netif, snmp_ifType_other, 100000000);
++
++  netif->name[0] = IFNAME0;
++  netif->name[1] = IFNAME1;
++#if LWIP_IPV4
++  netif->output = etharp_output;
++#endif /* LWIP_IPV4 */
++#if LWIP_IPV6
++  netif->output_ip6 = ethip6_output;
++#endif /* LWIP_IPV6 */
++  netif->linkoutput = low_level_output;
++  netif->mtu = 1500;
++
++  low_level_init(netif);
++
++  return ERR_OK;
++}
++
++
++/*-----------------------------------------------------------------------------------*/
++void
++tapif_poll(struct netif *netif)
++{
++  tapif_input(netif);
++}
++
++#if NO_SYS
++
++int
++tapif_select(struct netif *netif)
++{
++  fd_set fdset;
++  int ret;
++  struct timeval tv;
++  struct tapif *tapif;
++  u32_t msecs = sys_timeouts_sleeptime();
++
++  tapif = (struct tapif *)netif->state;
++
++  tv.tv_sec = msecs / 1000;
++  tv.tv_usec = (msecs % 1000) * 1000;
++
++  FD_ZERO(&fdset);
++  FD_SET(tapif->fd, &fdset);
++
++  ret = select(tapif->fd + 1, &fdset, NULL, NULL, &tv);
++  if (ret > 0) {
++    tapif_input(netif);
++  }
++  return ret;
++}
++
++#else /* NO_SYS */
++
++static void
++tapif_thread(void *arg)
++{
++  struct netif *netif;
++  struct tapif *tapif;
++  fd_set fdset;
++  int ret;
++
++  netif = (struct netif *)arg;
++  tapif = (struct tapif *)netif->state;
++
++  while(1) {
++    FD_ZERO(&fdset);
++    FD_SET(tapif->fd, &fdset);
++
++    /* Wait for a packet to arrive. */
++    ret = select(tapif->fd + 1, &fdset, NULL, NULL, NULL);
++
++    if(ret == 1) {
++      /* Handle incoming packet. */
++      tapif_input(netif);
++    } else if(ret == -1) {
++      perror("tapif_thread: select");
++    }
++  }
++}
++
++#endif /* NO_SYS */
