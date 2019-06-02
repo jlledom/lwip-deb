@@ -302,8 +302,8 @@ Won't get to upstream
  #define LWIP_SOCKET_EXTERNAL_HEADERS            1
 --- a/port/include/arch/cc.h
 +++ b/port/include/arch/cc.h
-@@ -47,6 +47,13 @@
- #define LWIP_UNIX_HURD
+@@ -52,6 +52,13 @@
+ #define IPV6_FRAG_COPYHEADER     1
  #endif
  
 +#if defined(LWIP_UNIX_LINUX) || defined(LWIP_UNIX_HURD)
@@ -316,7 +316,7 @@ Won't get to upstream
  #define LWIP_TIMEVAL_PRIVATE 0
  #include <sys/time.h>
  
-@@ -68,7 +75,7 @@
+@@ -73,7 +80,7 @@
  typedef __kernel_fd_set fd_set;
  #endif
  

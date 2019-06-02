@@ -2,7 +2,7 @@ Not intended to be upstream
 
 --- /dev/null
 +++ b/port/include/arch/cc.h
-@@ -0,0 +1,86 @@
+@@ -0,0 +1,91 @@
 +/*
 + * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
 + * All rights reserved. 
@@ -50,6 +50,11 @@ Not intended to be upstream
 +#define LWIP_UNIX_CYGWIN
 +#elif defined __GNU__
 +#define LWIP_UNIX_HURD
++#endif
++
++/* If the system is 64 bit */
++#if defined __LP64__
++#define IPV6_FRAG_COPYHEADER     1
 +#endif
 +
 +#define LWIP_TIMEVAL_PRIVATE 0
@@ -160,7 +165,7 @@ Not intended to be upstream
 +
 --- /dev/null
 +++ b/port/include/lwipopts.h
-@@ -0,0 +1,163 @@
+@@ -0,0 +1,169 @@
 +/*
 +   Copyright (C) 2017 Free Software Foundation, Inc.
 +   Written by Joan Lledó.
@@ -200,7 +205,6 @@ Not intended to be upstream
 +#define MEM_LIBC_MALLOC   1
 +#define MEMP_MEM_MALLOC   1
 +#define MEM_USE_POOLS     0
-+#define MEM_ALIGNMENT     4
 +
 +/* Only send complete packets to the device */
 +#define LWIP_NETIF_TX_SINGLE_PBUF 1
@@ -272,6 +276,13 @@ Not intended to be upstream
 +
 +/* Threading options */
 +#define LWIP_TCPIP_CORE_LOCKING   1
++
++/* If the system is 64 bit */
++#if defined __LP64__
++#define MEM_ALIGNMENT            8
++#else
++#define MEM_ALIGNMENT            4
++#endif
 +
 +#if !NO_SYS
 +void sys_check_core_locking(void);
