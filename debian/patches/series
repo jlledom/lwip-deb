@@ -1,4 +1,4 @@
-patch9350 --binary
+patch9350
 patch9807
 port
 max_sockets
