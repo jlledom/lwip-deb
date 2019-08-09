@@ -1,4 +1,4 @@
-lwip (2.1.2-2) UNRELEASED; urgency=medium
+lwip (2.1.2-2) unstable; urgency=medium
 
   [ Joan Lledó ]
   * debian/patches/max_sockets:
@@ -19,7 +19,10 @@ lwip (2.1.2-2) UNRELEASED; urgency=medium
   * debian/patches/series:
     * Add new patch debian/patches/patch9807
 
- -- Samuel Thibault <sthibault@debian.org>  Sat, 10 Aug 2019 00:44:08 +0200
+  [ Samuel Thibault ]
+  * Upload to unstable.
+
+ -- Samuel Thibault <sthibault@debian.org>  Sat, 10 Aug 2019 00:45:08 +0200
 
 lwip (2.1.2-1) experimental; urgency=medium
 
